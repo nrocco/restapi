@@ -1,0 +1,13 @@
+{
+    "name": "nrocco/restapi",
+    "require": {
+        "doctrine/dbal": "^2.5",
+        "silex/silex": "^1.3"
+    },
+    "authors": [
+        {
+            "name": "Nico Di Rocco",
+            "email": "n.dirocco@tech.leaseweb.com"
+        }
+    ]
+}
