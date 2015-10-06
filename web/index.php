@@ -4,9 +4,17 @@
 require_once __DIR__.'/../vendor/autoload.php';
 
 $app = new Silex\Application();
+$app->register(new Silex\Provider\DoctrineServiceProvider(), array(
+    'db.options' => array(
+        'driver'   => 'pdo_sqlite',
+        'path'     => __DIR__.'/../app.db',
+    ),
+));
+$app->register(new RestApi\Database\DataBaseMetaProvider());
 
 $app->get('/', function() use ($app) {
-    return json_encode(array());
+    $meta = new \RestApi\Database\SqliteDBMetaData($app['db']);
+    return $app->json($meta->getTables());
 });
 
 $app->get('/{table}', function($table) use ($app) {
