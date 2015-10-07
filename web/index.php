@@ -1,24 +1,21 @@
 <?php
 
-// web/index.php
 require_once __DIR__.'/../vendor/autoload.php';
 
+$config = require_once __DIR__.'/../config.php';
+
 $app = new Silex\Application();
-$app->register(new Silex\Provider\DoctrineServiceProvider(), array(
-    'db.options' => array(
-        'driver'   => 'pdo_sqlite',
-        'path'     => __DIR__.'/../app.db',
-    ),
-));
-$app->register(new RestApi\Database\DataBaseMetaProvider());
+$app->register(new Silex\Provider\DoctrineServiceProvider(), array('db.options' => $config['db.options']));
+$app->register(new RestApi\RestApiProvider());
 
 $app->get('/', function() use ($app) {
-    $meta = new \RestApi\Database\SqliteDBMetaData($app['db']);
-    return $app->json($meta->getTables());
+    return $app->json($app['api']->listResources());
 });
 
 $app->get('/{table}', function($table) use ($app) {
-    return 'read collection';
+    $response = $app['api']->readCollection($table, $app['request']->query->all());
+
+    return $app->json($response['body'], $response['code']);
 });
 
 $app->post('/{table}', function($table) use ($app) {

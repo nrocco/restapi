@@ -34,7 +34,10 @@ abstract class DBMetaData implements IDBMetaData
     public function getTables()
     {
         if (true === empty($this->tables)) {
-            $this->tables = array_values($this->getTablesQuery());
+            $this->tables = [];
+            foreach ($this->getTablesQuery() as $table) {
+                $this->tables[] = $table['name'];
+            }
         }
 
         return $this->tables;
@@ -45,10 +48,8 @@ abstract class DBMetaData implements IDBMetaData
         if (false === array_key_exists($table, $this->tableMap)) {
             $this->tableMap[$table] = [];
 
-            $result = $this->getTableMetaQuery($table);
-
-            foreach ($result as $row) {
-                $this->tableMap[$table][$row['name']] = $row;
+            foreach ($this->getTableMetaQuery($table) as $column) {
+                $this->tableMap[$table][$column['name']] = $column;
             }
         }
 

@@ -16,12 +16,12 @@ class SqliteDBMetadata extends DBMetaData
 
     protected function getTablesQuery()
     {
-        return $this->db->fetchAssoc("SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name != 'sqlite_sequence' AND name NOT LIKE 'oc_%'");
+        return $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name != 'sqlite_sequence' AND name NOT LIKE 'oc_%'");
     }
 
     protected function getTableMetaQuery($table)
     {
-        return $this->db->fetchAssoc("PRAGMA table_info({$table})");
+        return $this->db->fetchAll("PRAGMA table_info({$table})");
     }
 
     public function getPrimaryKeyField($table)
