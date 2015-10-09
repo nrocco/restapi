@@ -10,6 +10,16 @@ $app->register(new RestApi\RestApiProvider());
 
 $app['debug'] = true;
 
+$app->before(function (\Symfony\Component\HttpFoundation\Request $request) use ($app, $config) {
+    if (!isset($_SERVER['PHP_AUTH_USER'])) {
+        return $app->json(null, 401);
+    }
+
+    if ($config['restapi']['users'][$_SERVER['PHP_AUTH_USER']] !== $_SERVER['PHP_AUTH_PW']) {
+        return $app->json(null, 403);
+    }
+});
+
 $app->before(function (\Symfony\Component\HttpFoundation\Request $request) {
     if (0 === strpos($request->headers->get('Content-Type'), 'application/json')) {
         $data = json_decode($request->getContent(), true);

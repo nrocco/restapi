@@ -14,6 +14,7 @@ class RestApiProvider implements ServiceProviderInterface
         $storage = new HashedStorage("/Users/nrocco/Develop/restapi/_files");
 
         $app['api'] = new RestApi($app['db']);
+        $app['api']->setUser($_SERVER['PHP_AUTH_USER']);
         $app['api']->setStorage($storage);
     }
 
