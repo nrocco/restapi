@@ -8,7 +8,7 @@ class PostgresDBMetaData extends DBMetaData
 {
     protected function getTablesQuery()
     {
-        return $this->db->fetchAll("SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'public' AND table_name NOT LIKE 'oc_%'");
+        return $this->db->fetchAll("SELECT table_name as name FROM information_schema.tables WHERE table_schema = 'public'");
     }
 
     protected function getTableMetaQuery($table)

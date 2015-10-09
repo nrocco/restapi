@@ -16,7 +16,7 @@ class SqliteDBMetadata extends DBMetaData
 
     protected function getTablesQuery()
     {
-        return $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name != 'sqlite_sequence' AND name NOT LIKE 'oc_%'");
+        return $this->db->fetchAll("SELECT name FROM sqlite_master WHERE type IN ('table', 'view') AND name != 'sqlite_sequence'");
     }
 
     protected function getTableMetaQuery($table)
