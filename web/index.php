@@ -40,7 +40,11 @@ $app->get('/{table}', function($table) use ($app) {
 });
 
 $app->post('/{table}', function($table) use ($app) {
-    return $app['api']->createResource($table, array_merge($app['request']->request->all(), $app['request']->files->all()));
+    $params = array_merge(
+        $app['request']->request->all(),
+        $app['request']->files->all()
+    );
+    return $app['api']->createResource($table, $params);
 });
 
 $app->get('/{table}/{pk}', function($table, $pk) use ($app) {
@@ -48,15 +52,27 @@ $app->get('/{table}/{pk}', function($table, $pk) use ($app) {
 });
 
 $app->post('/{table}/{pk}', function($table, $pk) use ($app) {
-    return $app->json(array('dkfj' => 'ldkdjf'));
+    $params = array_merge(
+        $app['request']->request->all(),
+        $app['request']->files->all()
+    );
+    return $app['api']->updateResource($table, $pk, $params);
 });
 
 $app->put('/{table}/{pk}', function($table, $pk) use ($app) {
-    return $app->json(array('dkfj' => 'ldkdjf'));
+    $params = array_merge(
+        $app['request']->request->all(),
+        $app['request']->files->all()
+    );
+    return $app['api']->updateResource($table, $pk, $params);
 });
 
 $app->patch('/{table}/{pk}', function($table, $pk) use ($app) {
-    return $app->json(array('dkfj' => 'ldkdjf'));
+    $params = array_merge(
+        $app['request']->request->all(),
+        $app['request']->files->all()
+    );
+    return $app['api']->updateResource($table, $pk, $params);
 });
 
 $app->delete('/{table}/{pk}', function($table, $pk) use ($app) {

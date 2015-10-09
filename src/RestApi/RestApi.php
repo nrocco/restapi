@@ -4,6 +4,7 @@ namespace RestApi;
 
 use RestApi\Database\SqliteDBMetaData;
 use RestApi\Database\PostgresDBMetaData;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Doctrine\DBAL\Exception\NotNullConstraintViolationException;
 
 class RestApi
@@ -157,7 +158,33 @@ class RestApi
         }
 
         // /////////////////////////////////////////////////////////////////////
-        // TODO: files stuff
+
+        // TODO: determine the fields that are references to files.
+        $fileFields = array_filter($columns, function($v) {
+            return in_array($v, array('receipt', 'file'));
+        });
+
+        foreach ($fileFields as $fileField) {
+            if (false === array_key_exists($fileField, $params)) {
+                continue; // api user did not POST a file field.
+            }
+
+            if ($params[$fileField] instanceof UploadedFile) {
+                $hash = $this->storage->save($params[$fileField]->getPathName());
+                $params[$fileField] = $hash;
+
+                continue; // file uploaded, no need to do additional checks.
+            }
+
+            if (null === $params[$fileField]) {
+                continue; // if `null` was submitted, the api user wants to unset it.
+            }
+
+            if (false === $this->storage->exists($params[$fileField])) {
+                return $this->raise("{$fileField} {$params[$fileField]} does not exist", 400);
+            }
+        }
+
         // /////////////////////////////////////////////////////////////////////
 
         $qb = $this->database->createQueryBuilder();
@@ -221,6 +248,78 @@ class RestApi
 
     public function updateResource($table, $pk, $params)
     {
+        if (false === in_array($table, $this->meta->getTables())) {
+            return $this->raise("Resource $table does not exist", 400);
+        }
+
+        $columns = $this->meta->getTableColumns($table);
+        $pkField = $this->meta->getPrimaryKeyField($table);
+
+        if (null === $pkField) {
+            return $this->raise("This operation is not suppored on this resource", 400);
+        }
+
+        if (false === empty($diff = array_diff(array_keys($params), $columns))) {
+            return $this->raise("Unrecognized fields detected: ".implode(', ', $diff), 400);
+        }
+
+        if (true === empty($params)) {
+            return $this->raise('Empty request not allowed', 400);
+        }
+
+        // /////////////////////////////////////////////////////////////////////
+
+        // TODO: determine the fields that are references to files.
+        $fileFields = array_filter($columns, function($v) {
+            return in_array($v, array('receipt', 'file'));
+        });
+
+        foreach ($fileFields as $fileField) {
+            if (false === array_key_exists($fileField, $params)) {
+                continue; // api user did not POST a file field.
+            }
+
+            if ($params[$fileField] instanceof UploadedFile) {
+                $hash = $this->storage->save($params[$fileField]->getPathName());
+                $params[$fileField] = $hash;
+
+                continue; // file uploaded, no need to do additional checks.
+            }
+
+            if (null === $params[$fileField]) {
+                continue; // if `null` was submitted, the api user wants to unset it.
+            }
+
+            if (false === $this->storage->exists($params[$fileField])) {
+                return $this->raise("{$fileField} {$params[$fileField]} does not exist", 400);
+            }
+        }
+
+        // /////////////////////////////////////////////////////////////////////
+
+        $qb = $this->database->createQueryBuilder();
+        $qb->update($table);
+        $qb->andWhere("{$pkField} = :pk");
+        $qb->setParameter(':pk', $pk);
+
+        if (true === in_array('user_id', $columns)) {
+            $qb->andWhere("user_id = :user_id");
+            $qb->setParameter(':user_id', $this->user);
+        }
+
+        foreach ($params as $column => $value) {
+            $qb->set($column, ":{$column}");
+            $qb->setParameter(":{$column}", $value);
+        }
+
+        try {
+            // TODO: if this returns 0 an error occurred? how to expose this over the api?
+            $result = $qb->execute();
+        } catch(\Doctrine\DBAL\Exception\DriverException $e) {
+            return $this->raise($e->getMessage(), 400);
+        }
+
+        return $this->readResource($table, $pk);
     }
 
     public function deleteResource($table, $pk)
