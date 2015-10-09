@@ -13,7 +13,7 @@ class PostgresDBMetaData extends DBMetaData
 
     protected function getTableMetaQuery($table)
     {
-        $query = $this->db->fetchAll("SELECT
+        $query = $this->db->executeQuery("SELECT
     a.attname::varchar AS name,
     t.typname::varchar AS type,
     a.attnum AS position,
@@ -26,10 +26,9 @@ WHERE
 AND
     a.attnum > 0
 AND
-    a.attrelid = :table::regclass");
-        $query->bindValue(':table', $table);
+    a.attrelid = :table::regclass", [':table'=>$table]);
 
-        return $query;
+        return $query->fetchAll();
     }
 
     public function getPrimaryKeyField($table)
