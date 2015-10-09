@@ -61,7 +61,7 @@ abstract class DBMetaData implements IDBMetaData
         return array_keys($this->getTableMeta($table));
     }
 
-    public function addWhere($key, $value, &$where)
+    public function addWhere($key, $value)
     {
         $parts = explode('__', $key, 2);
         $column = $parts[0];
@@ -71,7 +71,7 @@ abstract class DBMetaData implements IDBMetaData
             throw new \Exception("Lookup type `{$lookupType}` does not exist.");
         }
 
-        $where[] = $this->renderWhere($parts[0], $value, $lookupType);
+        return $this->renderWhere($parts[0], $value, $lookupType);
     }
 
     protected function renderWhere($column, $value, $lookupType)

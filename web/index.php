@@ -8,22 +8,33 @@ $app = new Silex\Application();
 $app->register(new Silex\Provider\DoctrineServiceProvider(), array('db.options' => $config['db.options']));
 $app->register(new RestApi\RestApiProvider());
 
-$app->get('/', function() use ($app) {
-    return $app->json($app['api']->listResources());
+$app['debug'] = true;
+
+$app->before(function (\Symfony\Component\HttpFoundation\Request $request) {
+    if (0 === strpos($request->headers->get('Content-Type'), 'application/json')) {
+        $data = json_decode($request->getContent(), true);
+        $request->request->replace(is_array($data) ? $data : array());
+    }
 });
 
-$app->get('/{table}', function($table) use ($app) {
-    $response = $app['api']->readCollection($table, $app['request']->query->all());
-
+$app->view(function (array $response) use ($app) {
     return $app->json($response['body'], $response['code']);
 });
 
+$app->get('/', function() use ($app) {
+    return $app['api']->listResources();
+});
+
+$app->get('/{table}', function($table) use ($app) {
+    return $app['api']->readCollection($table, $app['request']->query->all());
+});
+
 $app->post('/{table}', function($table) use ($app) {
-    return $app->json(array('dkfj' => 'ldkdjf'));
+    return $app['api']->createResource($table, array_merge($app['request']->request->all(), $app['request']->files->all()));
 });
 
 $app->get('/{table}/{pk}', function($table, $pk) use ($app) {
-    return $app->json(array('dkfj' => 'ldkdjf'));
+    return $app['api']->readResource($table, $pk, $app['request']->query->all());
 });
 
 $app->post('/{table}/{pk}', function($table, $pk) use ($app) {
@@ -39,7 +50,7 @@ $app->patch('/{table}/{pk}', function($table, $pk) use ($app) {
 });
 
 $app->delete('/{table}/{pk}', function($table, $pk) use ($app) {
-    return $app->json(array('dkfj' => 'ldkdjf'));
+    return $app['api']->deleteResource($table, $pk);
 });
 
 $app->run();

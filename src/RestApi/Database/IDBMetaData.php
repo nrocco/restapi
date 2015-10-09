@@ -8,5 +8,5 @@ interface IDBMetaData
     public function getTableMeta($table);
     public function getTableColumns($table);
     public function getPrimaryKeyField($table);
-    public function addWhere($key, $value, &$where);
+    public function addWhere($key, $value);
 }
