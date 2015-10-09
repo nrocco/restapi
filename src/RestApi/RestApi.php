@@ -57,12 +57,16 @@ class RestApi
 
     public function readCollection($table, $params=[])
     {
+        $start = microtime(true); // debug
+
         if (false === in_array($table, $this->meta->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
         }
 
         $columns = $this->meta->getTableColumns($table);
         $pkField = $this->meta->getPrimaryKeyField($table);
+
+        $metaTime = microtime(true) - $start; // debug
 
         $fields = array_key_exists('_fields', $params) ? $params['_fields'] : false;
         if ($fields) {
@@ -118,10 +122,14 @@ class RestApi
             $qb->andWhere($this->meta->addWhere($key, $value));
         }
 
+        $start = microtime(true); // debug
         $response = $qb->execute()->fetchAll();
-        // $response = $qb->getSQL();
+        $queryTime = microtime(true) - $start; // debug
 
-        return $this->response($response);
+        return $this->response($response, 200, [
+            'X-Query' => $qb->getSQL(),
+            'X-Debug' => "query={$queryTime}ms; meta={$metaTime}ms;"
+        ]);
     }
 
     public function createResource($table, $params)

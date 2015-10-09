@@ -28,7 +28,7 @@ $app->before(function (\Symfony\Component\HttpFoundation\Request $request) {
 });
 
 $app->view(function (array $response) use ($app) {
-    return $app->json($response['body'], $response['code']);
+    return $app->json($response['body'], $response['code'], $response['headers']);
 });
 
 $app->get('/', function() use ($app) {
