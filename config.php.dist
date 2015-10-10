@@ -1,8 +1,26 @@
 <?php
 
-return array(
-    'db.options' => array(
+return [
+    'debug' => true,
+
+    'db.options' => [
         'driver'   => 'pdo_sqlite',
         'path'     => __DIR__.'/app.db',
-    )
-);
+    ],
+
+    'cors.allowCredentials' => true,
+    'cors.allowOrigin' => 'http://localhost:8000 http://0.0.0.0:8000',
+
+    'session.storage.options' => [
+        'cookie_lifetime' => 60*60*24*30,
+        'cookie_path' => '/',
+        'cookie_domain' => '',
+        'cookie_secure' => false,
+        'cookie_httponly' => true
+    ],
+
+    'restapi' => [
+        'storage_path' => __DIR__.'/_files',
+        'users' => [],
+    ],
+];
