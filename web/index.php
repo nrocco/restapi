@@ -55,6 +55,7 @@ $app->view(function (array $response) use ($app) {
 $app->post('/login', function(Silex\Application $app) {
     $username = $app['request']->request->get('username', false);
     $password = $app['request']->request->get('password');
+    $redirect = $app['request']->request->get('redirect', '/');
 
     if (!isset($username) || $app['restapi']['users'][$username] !== $password) {
         return $app->json(["message" => "Unauthorized"], 401);
@@ -62,7 +63,7 @@ $app->post('/login', function(Silex\Application $app) {
 
     $app['session']->set('user', array('username' => $username));
 
-    return $app->json(null, 204);
+    return $app->redirect($redirect);
 });
 
 $app->get('/files/{hash}', function($hash) use ($app) {
