@@ -4,9 +4,16 @@ require_once __DIR__.'/../vendor/autoload.php';
 
 $app = new Silex\Application();
 $app->register(new RestApi\Config\ConfigProvider(__DIR__.'/../config.php'));
-$app->register(new JDesrosiers\Silex\Provider\CorsServiceProvider());
-$app->register(new Silex\Provider\DoctrineServiceProvider(), ['db.options' => $app['db.options']]);
-$app->register(new Silex\Provider\SessionServiceProvider(), ['session.storage.options' => $app['session.storage.options']]);
+$app->register(new JDesrosiers\Silex\Provider\CorsServiceProvider(), [
+    'cors.allowOrigin' => $app['cors.allowOrigin'],
+    'cors.allowCredentials' => $app['cors.allowCredentials']
+]);
+$app->register(new Silex\Provider\DoctrineServiceProvider(), [
+    'db.options' => $app['db.options']
+]);
+$app->register(new Silex\Provider\SessionServiceProvider(), [
+    'session.storage.options' => $app['session.storage.options']
+]);
 $app->register(new RestApi\RestApiProvider());
 
 // add cors
