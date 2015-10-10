@@ -362,6 +362,15 @@ class RestApi
         return $this->response(null, 204);
     }
 
+    public function fetchFile($hash)
+    {
+        if (false === $this->storage->exists($hash)) {
+            return $this->response("", 404);
+        }
+
+        return $this->storage->hashToFullFilePath($hash);
+    }
+
     protected function raise($message, $code=503)
     {
         return $this->response(array('message' => $message), $code);

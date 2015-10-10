@@ -55,6 +55,10 @@ $app->post('/login', function(Silex\Application $app) {
     return $app->json(null, 204);
 });
 
+$app->get('/files/{hash}', function($hash) use ($app) {
+    return $app->sendFile($app['api']->fetchFile($hash));
+})->before($mustBeLogged);
+
 $app->get('/', function() use ($app) {
     return $app['api']->listResources();
 })->before($mustBeLogged);
