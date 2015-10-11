@@ -129,10 +129,10 @@ class RestApi
                 if (true === in_array($column, array($pkField, 'user_id'))) {
                     continue;
                 }
-                $searchArray[] = $qb->expr()->like($column, ':search');
+                $searchArray[] = $this->meta->addWhere("{$column}__icontains", $search); // TODO: $qb->expr()->like($column, ':search');
             }
             $qb->andWhere(call_user_func_array(array($qb->expr(), 'orX'), $searchArray));
-            $qb->setParameter(':search', "%$search%");
+            // TODO: $qb->setParameter(':search', "%$search%");
         }
 
         $start = microtime(true); // debug
