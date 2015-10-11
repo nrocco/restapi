@@ -122,6 +122,19 @@ class RestApi
             $qb->andWhere($this->meta->addWhere($key, $value));
         }
 
+        $search = array_key_exists('_search', $params) ? $params['_search'] : null;
+        if (false === empty($search)) {
+            $searchArray = [];
+            foreach ($columns as $column) {
+                if (true === in_array($column, array($pkField, 'user_id'))) {
+                    continue;
+                }
+                $searchArray[] = $qb->expr()->like($column, ':search');
+            }
+            $qb->andWhere(call_user_func_array(array($qb->expr(), 'orX'), $searchArray));
+            $qb->setParameter(':search', "%$search%");
+        }
+
         $start = microtime(true); // debug
         $response = $qb->execute()->fetchAll();
         $queryTime = microtime(true) - $start; // debug
