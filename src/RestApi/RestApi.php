@@ -286,6 +286,10 @@ class RestApi
 
         if (true === empty($params)) {
             return $this->raise('Empty request not allowed', 400);
+        } elseif (true === array_key_exists($pkField, $params)) {
+            return $this->raise('Not allowed to change the primary key of this resource', 400);
+        } elseif (true === array_key_exists('user_id', $params)) {
+            return $this->raise('Not allowed to change the user of this resource', 400);
         }
 
         // /////////////////////////////////////////////////////////////////////
