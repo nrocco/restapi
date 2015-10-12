@@ -106,11 +106,7 @@ class RestApi
         }
 
         $qb = $this->database->createQueryBuilder();
-        $qb->select($fields);
         $qb->from($table);
-        $qb->orderBy($sort, $order);
-        $qb->setFirstResult($offset);
-        $qb->setMaxResults($limit);
 
         foreach ($params as $key => $value) {
             if (substr($key, 0, 1) === '_') {
@@ -135,14 +131,18 @@ class RestApi
             // TODO: $qb->setParameter(':search', "%$search%");
         }
 
-        $start = microtime(true); // debug
-        $response = $qb->execute()->fetchAll();
-        $queryTime = microtime(true) - $start; // debug
-
         // return the number of total rows that matched the query
         $start = microtime(true); // debug
         $total = $qb->select('COUNT(*)')->execute()->fetchColumn();
         $countTime = microtime(true) - $start; // debug
+
+        $start = microtime(true); // debug
+        $qb->select($fields);
+        $qb->orderBy($sort, $order);
+        $qb->setFirstResult($offset);
+        $qb->setMaxResults($limit);
+        $response = $qb->execute()->fetchAll();
+        $queryTime = microtime(true) - $start; // debug
 
         return $this->response($response, 200, [
             'X-Pagination-Limit' => $limit,
