@@ -139,9 +139,17 @@ class RestApi
         $response = $qb->execute()->fetchAll();
         $queryTime = microtime(true) - $start; // debug
 
+        // return the number of total rows that matched the query
+        $start = microtime(true); // debug
+        $total = $qb->select("COUNT({$pkField})")->execute()->fetchColumn();
+        $countTime = microtime(true) - $start; // debug
+
         return $this->response($response, 200, [
+            'X-Pagination-Limit' => $limit,
+            'X-Pagination-Offset' => $offset,
+            'X-Pagination-Total' => $total,
             'X-Query' => $qb->getSQL(),
-            'X-Debug' => "query={$queryTime}ms; meta={$metaTime}ms;"
+            'X-Debug' => "query={$queryTime}ms; meta={$metaTime}ms; count={$countTime}ms;"
         ]);
     }
 
