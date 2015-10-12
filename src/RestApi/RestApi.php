@@ -141,7 +141,7 @@ class RestApi
 
         // return the number of total rows that matched the query
         $start = microtime(true); // debug
-        $total = $qb->select("COUNT({$pkField})")->execute()->fetchColumn();
+        $total = $qb->select('COUNT(*)')->execute()->fetchColumn();
         $countTime = microtime(true) - $start; // debug
 
         return $this->response($response, 200, [
