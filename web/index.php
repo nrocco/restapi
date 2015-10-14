@@ -33,7 +33,7 @@ $mustBeLogged = function () use ($app) {
     $username = $app['request']->server->get('PHP_AUTH_USER');
     $password = $app['request']->server->get('PHP_AUTH_PW');
 
-    if ($app['restapi']['users'][$username] !== $password) {
+    if (false === password_verify($password, $app['restapi']['users'][$username])) {
         return $app->json(["message" => "Unauthorized"], 401);
     }
 
@@ -57,7 +57,7 @@ $app->post('/login', function(Silex\Application $app) {
     $password = $app['request']->request->get('password');
     $redirect = $app['request']->request->get('redirect', '/');
 
-    if (!isset($username) || $app['restapi']['users'][$username] !== $password) {
+    if (!isset($username) || false === password_verify($password, $app['restapi']['users'][$username])) {
         return $app->json(["message" => "Unauthorized"], 401);
     }
 
