@@ -92,12 +92,12 @@ class RestApi
 
         $limit = array_key_exists('_limit', $params) ? $params['_limit'] : 25;
         if (false === filter_var($limit, FILTER_VALIDATE_INT)) {
-            return $this->raise("Invalid value for _limit: $limit");
+            return $this->raise("Invalid value for _limit: $limit", 400);
         }
 
         $offset = array_key_exists('_offset', $params) ? $params['_offset'] : 0;
         if (false === filter_var($offset, FILTER_VALIDATE_INT)) {
-            return $this->raise("Invalid value for _offset: $offset");
+            return $this->raise("Invalid value for _offset: $offset", 400);
         }
 
         if (true === in_array('user_id', $columns)) {
@@ -131,7 +131,7 @@ class RestApi
         }
 
         // return the number of total rows that matched the query
-        $total = $qb->select('COUNT(*)')->execute()->fetchColumn();
+        $total = (int) $qb->select('COUNT(*)')->execute()->fetchColumn();
 
         $start = microtime(true);
         $qb->select($fields);
@@ -416,7 +416,7 @@ class RestApi
             $resources[] = $table->getName();
         }
         foreach ($sm->listViews() as $view) {
-            $resources[] = $view->getName();
+            $resources[] = $view->getShortestName("public");
         }
 
         sort($resources);
