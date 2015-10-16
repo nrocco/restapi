@@ -1,6 +1,6 @@
 <?php
 
-namespace RestApi\Storage;
+namespace RestApi;
 
 class HashedStorage
 {
@@ -14,6 +14,11 @@ class HashedStorage
     public function setBasePath($path)
     {
         $this->basepath = $path;
+    }
+
+    public function getBasePath()
+    {
+        return $this->basepath;
     }
 
     public function save($file)

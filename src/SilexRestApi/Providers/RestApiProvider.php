@@ -1,11 +1,11 @@
 <?php
 
-namespace RestApi;
+namespace SilexRestApi\Providers;
 
 use Silex\Application;
 use Silex\ServiceProviderInterface;
 use RestApi\RestApi;
-use RestApi\Storage\HashedStorage;
+use RestApi\HashedStorage;
 
 class RestApiProvider implements ServiceProviderInterface
 {

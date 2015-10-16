@@ -2,32 +2,35 @@
 
 namespace RestApi;
 
-use RestApi\Database\SqliteDBMetaData;
-use RestApi\Database\PostgresDBMetaData;
-use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Exception\NotNullConstraintViolationException;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 
 class RestApi
 {
+    protected $lookupTypes = [
+        'eq' => '=',
+        'neq' => '!=',
+        'gt' => '>',
+        'lt' => '<',
+        'gte' => '>=',
+        'lte' => '<=',
+        'isnull' => 'x',
+        'notnull' => 'x',
+        'contains' => 'LIKE',
+        'icontains' => 'LIKE', //TODO: on postgres this is ilike
+
+        'month' => '=',
+        'year' => '=',
+    ];
+
     protected $database;
     protected $user;
     protected $storage;
 
-    public function __construct($database)
+    public function __construct(Connection $database)
     {
         $this->database = $database;
-
-        switch ($database->getDatabasePlatform()->getName()) {
-            case 'sqlite':
-                $this->meta = new SqliteDBMetaData($database);
-                break;
-            case 'postgresql':
-                $this->meta = new PostgresDBMetaData($database);
-                break;
-            default:
-                throw new \Exception("Unsupported database platform ".$database->getDatabasePlatform()->getName());
-                break;
-        }
     }
 
     public function setUser($user)
@@ -52,21 +55,17 @@ class RestApi
 
     public function listResources()
     {
-        return $this->response($this->meta->getTables());
+        return $this->response($this->getTables());
     }
 
     public function readCollection($table, $params=[])
     {
-        $start = microtime(true); // debug
-
-        if (false === in_array($table, $this->meta->getTables())) {
+        if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
         }
 
-        $columns = $this->meta->getTableColumns($table);
-        $pkField = $this->meta->getPrimaryKeyField($table);
-
-        $metaTime = microtime(true) - $start; // debug
+        $columns = $this->getTableColumns($table);
+        $pkField = $this->getPrimaryKeyField($table);
 
         $fields = array_key_exists('_fields', $params) ? $params['_fields'] : false;
         if ($fields) {
@@ -115,7 +114,7 @@ class RestApi
                 return $this->raise("Cannot filter on unknown property: {$key}", 400);
             }
 
-            $qb->andWhere($this->meta->addWhere($key, $value));
+            $qb->andWhere($this->addWhere($key, $value));
         }
 
         $search = array_key_exists('_search', $params) ? $params['_search'] : null;
@@ -125,42 +124,40 @@ class RestApi
                 if (true === in_array($column, array($pkField, 'user_id'))) {
                     continue;
                 }
-                $searchArray[] = $this->meta->addWhere("{$column}__icontains", $search); // TODO: $qb->expr()->like($column, ':search');
+                $searchArray[] = $this->addWhere("{$column}__icontains", $search); // TODO: $qb->expr()->like($column, ':search');
             }
             $qb->andWhere(call_user_func_array(array($qb->expr(), 'orX'), $searchArray));
             // TODO: $qb->setParameter(':search', "%$search%");
         }
 
         // return the number of total rows that matched the query
-        $start = microtime(true); // debug
         $total = $qb->select('COUNT(*)')->execute()->fetchColumn();
-        $countTime = microtime(true) - $start; // debug
 
-        $start = microtime(true); // debug
+        $start = microtime(true);
         $qb->select($fields);
         $qb->orderBy($sort, $order);
         $qb->setFirstResult($offset);
         $qb->setMaxResults($limit);
         $response = $qb->execute()->fetchAll();
-        $queryTime = microtime(true) - $start; // debug
+        $queryTime = microtime(true) - $start;
 
         return $this->response($response, 200, [
             'X-Pagination-Limit' => $limit,
             'X-Pagination-Offset' => $offset,
             'X-Pagination-Total' => $total,
             'X-Query' => $qb->getSQL(),
-            'X-Debug' => "query={$queryTime}ms; meta={$metaTime}ms; count={$countTime}ms;"
+            'X-Query-Time' => "{$queryTime}ms"
         ]);
     }
 
     public function createResource($table, $params)
     {
-        if (false === in_array($table, $this->meta->getTables())) {
+        if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
         }
 
-        $columns = $this->meta->getTableColumns($table);
-        $pkField = $this->meta->getPrimaryKeyField($table);
+        $columns = $this->getTableColumns($table);
+        $pkField = $this->getPrimaryKeyField($table);
 
         // TODO: can we get around this check?
         if (true === array_key_exists('user_id', $params)) {
@@ -235,12 +232,12 @@ class RestApi
 
     public function readResource($table, $pk, $params=[])
     {
-        if (false === in_array($table, $this->meta->getTables())) {
+        if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
         }
 
-        $columns = $this->meta->getTableColumns($table);
-        $pkField = $this->meta->getPrimaryKeyField($table);
+        $columns = $this->getTableColumns($table);
+        $pkField = $this->getPrimaryKeyField($table);
 
         if (null === $pkField) {
             return $this->raise("This operation is not suppored on this resource", 400);
@@ -277,12 +274,12 @@ class RestApi
 
     public function updateResource($table, $pk, $params)
     {
-        if (false === in_array($table, $this->meta->getTables())) {
+        if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
         }
 
-        $columns = $this->meta->getTableColumns($table);
-        $pkField = $this->meta->getPrimaryKeyField($table);
+        $columns = $this->getTableColumns($table);
+        $pkField = $this->getPrimaryKeyField($table);
 
         if (null === $pkField) {
             return $this->raise("This operation is not suppored on this resource", 400);
@@ -357,12 +354,12 @@ class RestApi
 
     public function deleteResource($table, $pk)
     {
-        if (false === in_array($table, $this->meta->getTables())) {
+        if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
         }
 
-        $columns = $this->meta->getTableColumns($table);
-        $pkField = $this->meta->getPrimaryKeyField($table);
+        $columns = $this->getTableColumns($table);
+        $pkField = $this->getPrimaryKeyField($table);
 
         if (null === $pkField) {
             return $this->raise("This operation is not suppored on this resource", 400);
@@ -408,5 +405,94 @@ class RestApi
             'code' => $code,
             'headers' => $headers
         );
+    }
+
+    protected function getTables()
+    {
+        $sm = $this->database->getSchemaManager();
+        $resources = [];
+
+        foreach ($sm->listTables() as $table) {
+            $resources[] = $table->getName();
+        }
+        foreach ($sm->listViews() as $view) {
+            $resources[] = $view->getName();
+        }
+
+        sort($resources);
+
+        return $resources;
+    }
+
+    protected function getTableColumns($table)
+    {
+        $sm = $this->database->getSchemaManager();
+        $columns = [];
+
+        foreach ($sm->listTableColumns($table) as $column) {
+            $columns[] = $column->getName();
+        }
+
+        return $columns;
+    }
+
+    protected function getPrimaryKeyField($table)
+    {
+        $sm = $this->database->getSchemaManager();
+        $details = $sm->listTableDetails($table);
+
+        if (false === $details->hasPrimaryKey()) {
+            return null;
+        }
+
+        $pkColumns = $details->getPrimaryKeyColumns();
+        if (count($pkColumns) > 1) {
+            throw new \RuntimeException("Resource {$table} uses a composite primary key which is not supported");
+        }
+
+        return reset($pkColumns);
+    }
+
+    public function addWhere($key, $value)
+    {
+        $parts = explode('__', $key, 2);
+        $column = $parts[0];
+        $lookupType = isset($parts[1]) ? $parts[1] : 'eq';
+
+        if (array_key_exists($lookupType, $this->lookupTypes) === false) {
+            throw new \RuntimeException("Lookup type `{$lookupType}` does not exist.");
+        }
+
+        $platform = $this->database->getDatabasePlatform()->getName();
+
+        if (null === $value || $lookupType === 'isnull') {
+            return "{$column} IS NULL";
+        } elseif ($lookupType === 'notnull') {
+            return "{$column} IS NOT NULL";
+        } elseif ($lookupType === 'contains' || $lookupType === 'icontains') {
+            $value = "%{$value}%";
+        } elseif ('year' === $lookupType) {
+            if ('sqlite' === $platform) {
+                return "strftime('%Y', {$column}) = {$this->database->quote($value)}";
+            } elseif ('postgresql' === $platform) {
+                return "date_part('year', {$column}) = {$this->database->quote($value)}";
+            } else {
+                throw new \RuntimeException("Unsupported platform {$platform}");
+            }
+        } elseif ('month' === $lookupType) {
+            if ('sqlite' === $platform) {
+                return "strftime('%m', {$column}) = {$this->database->quote($value)}";
+            } elseif ('postgresql' === $platform) {
+                return "date_part('month', {$column}) = {$this->database->quote($value)}";
+            } else {
+                throw new \RuntimeException("Unsupported platform {$platform}");
+            }
+        }
+
+        if ('postgresql' === $platform) {
+            $column = "{$column}::text";
+        }
+
+        return "{$column} {$this->lookupTypes[$lookupType]} {$this->database->quote($value)}";
     }
 }

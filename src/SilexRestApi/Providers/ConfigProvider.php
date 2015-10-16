@@ -1,6 +1,6 @@
 <?php
 
-namespace RestApi\Config;
+namespace SilexRestApi\Providers;
 
 use Silex\Application;
 use Silex\ServiceProviderInterface;
