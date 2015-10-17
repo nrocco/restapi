@@ -110,7 +110,10 @@ class RestApi
         foreach ($params as $key => $value) {
             if (substr($key, 0, 1) === '_') {
                 continue;
-            } elseif (false === in_array(reset(explode('__', $key, 2)), $columns)) {
+            }
+
+            $parts = explode('__', $key, 2);
+            if (false === in_array($parts[0], $columns)) {
                 return $this->raise("Cannot filter on unknown property: {$key}", 400);
             }
 
