@@ -236,7 +236,9 @@ class RestApi
             return $this->raise("Required parameters missing.", 400);
         }
 
-        return $this->readResource($table, $this->database->lastInsertId());
+        $pk = $this->database->lastInsertId("{$table}_{$pkField}_seq"); // TODO: this is postgresql specific
+
+        return $this->readResource($table, $pk);
     }
 
     public function readResource($table, $pk, $params=[])
@@ -500,6 +502,7 @@ class RestApi
 
         if ('postgresql' === $platform) {
             $column = "{$column}::text";
+            $this->lookupTypes['icontains'] = 'ILIKE'; // TODO this is a hack
         }
 
         return "{$column} {$this->lookupTypes[$lookupType]} {$this->database->quote($value)}";
