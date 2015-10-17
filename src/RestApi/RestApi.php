@@ -178,7 +178,7 @@ class RestApi
             return $this->raise('Not allowed to POST a primary key', 400);
         }
 
-        $diff = array_diff(array_keys($params), $columns)
+        $diff = array_diff(array_keys($params), $columns);
         if (false === empty($diff)) {
             return $this->raise('Unrecognized fields detected: '.implode(', ', $diff), 400);
         }
@@ -297,7 +297,7 @@ class RestApi
             return $this->raise('This operation is not suppored on this resource', 400);
         }
 
-        $diff = array_diff(array_keys($params), $columns)
+        $diff = array_diff(array_keys($params), $columns);
         if (false === empty($diff)) {
             return $this->raise('Unrecognized fields detected: '.implode(', ', $diff), 400);
         }
