@@ -73,6 +73,6 @@ class HashedStorage
 
     protected function hashToDirectory($hash)
     {
-        return substr($hash, 0, 1) . '/'.substr($hash, 1, 1);
+        return substr($hash, 0, 1).'/'.substr($hash, 1, 1);
     }
 }

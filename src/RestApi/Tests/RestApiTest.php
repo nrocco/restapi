@@ -11,6 +11,9 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
 {
     protected $database;
 
+    /**
+     * @SuppressWarnings(PHPMD.StaticAccess)
+     */
     public function setUp()
     {
         $this->database = DriverManager::getConnection(
@@ -38,9 +41,9 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $api = $this->getApi();
         $api->setUser('tester');
 
-        $api->createResource('todos', array('description' => "hello world"));
-        $api->createResource('todos', array('description' => "take out the trash"));
-        $api->createResource('todos', array('description' => "watch tv"));
+        $api->createResource('todos', array('description' => 'hello world'));
+        $api->createResource('todos', array('description' => 'take out the trash'));
+        $api->createResource('todos', array('description' => 'watch tv'));
 
         return $api;
     }
@@ -207,7 +210,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
     public function testCreateNonExistingResource()
     {
         $api = new RestApi($this->database);
-        $todo = $api->createResource('todos', array('description' => "hello world"));
+        $todo = $api->createResource('todos', array('description' => 'hello world'));
 
         $this->assertInternalType('array', $todo);
         $this->assertEquals(400, $todo['code']);
@@ -222,13 +225,13 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals('tester', $api->getUser());
 
-        $todo = $api->createResource('todos', array('description' => "hello world"));
+        $todo = $api->createResource('todos', array('description' => 'hello world'));
 
         $this->assertInternalType('array', $todo);
         $this->assertEquals(200, $todo['code']);
         $this->assertInternalType('array', $todo['body']);
 
-        foreach (["id", "created", "updated", "user_id", "category", "description", "done", "urgency"] as $column) {
+        foreach (['id', 'created', 'updated', 'user_id', 'category', 'description', 'done', 'urgency'] as $column) {
             $this->assertArrayHasKey($column, $todo['body']);
         }
 
@@ -241,7 +244,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $api = $this->getApi();
         $api->setUser('tester');
 
-        $todo = $api->createResource('todos', ['id' => 45, 'description' => "hello world"]);
+        $todo = $api->createResource('todos', ['id' => 45, 'description' => 'hello world']);
 
         $this->assertInternalType('array', $todo);
         $this->assertEquals(400, $todo['code']);
@@ -254,7 +257,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $api = $this->getApi();
         $api->setUser('tester');
 
-        $todo = $api->createResource('todos', ['user_id' => 'rocco', 'description' => "hello world"]);
+        $todo = $api->createResource('todos', ['user_id' => 'rocco', 'description' => 'hello world']);
 
         $this->assertInternalType('array', $todo);
         $this->assertEquals(400, $todo['code']);

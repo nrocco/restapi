@@ -21,6 +21,8 @@ return [
 
     'restapi' => [
         'storage_path' => __DIR__.'/_files',
-        'users' => [],
+        'users' => [
+            // Add users here
+        ],
     ],
 ];

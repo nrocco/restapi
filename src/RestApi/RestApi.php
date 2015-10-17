@@ -50,7 +50,7 @@ class RestApi
 
     public function getStorage()
     {
-        return $storage;
+        return $this->storage;
     }
 
     public function listResources()
@@ -58,7 +58,7 @@ class RestApi
         return $this->response($this->getTables());
     }
 
-    public function readCollection($table, $params=[])
+    public function readCollection($table, $params = [])
     {
         if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
@@ -67,21 +67,19 @@ class RestApi
         $columns = $this->getTableColumns($table);
         $pkField = $this->getPrimaryKeyField($table);
 
-        $fields = array_key_exists('_fields', $params) ? $params['_fields'] : false;
-        if ($fields) {
-            foreach (explode(",", $fields) as $field) {
+        $fields = array_key_exists('_fields', $params) ? $params['_fields'] : '*';
+        if ('*' !== $fields) {
+            foreach (explode(',', $fields) as $field) {
                 if (false === in_array($field, $columns)) {
                     return $this->raise("Unknown _field {$field} detected.", 400);
                 }
             }
-        } else {
-            $fields = implode(',', $columns);
         }
 
         $sort = array_key_exists('_sort', $params) ? $params['_sort'] : $pkField;
         if (null === $sort) {
             $sort = $columns[0];
-        } elseif(false === in_array($sort, $columns)) {
+        } elseif (false === in_array($sort, $columns)) {
             return $this->raise("Cannot sort on unknown property: {$sort}", 400);
         }
 
@@ -104,8 +102,8 @@ class RestApi
             $params['user_id__eq'] = $this->user;
         }
 
-        $qb = $this->database->createQueryBuilder();
-        $qb->from($table);
+        $queryBuilder = $this->database->createQueryBuilder();
+        $queryBuilder->from($table);
 
         foreach ($params as $key => $value) {
             if (substr($key, 0, 1) === '_') {
@@ -118,7 +116,7 @@ class RestApi
             }
 
             try {
-                $qb->andWhere($this->addWhere($key, $value));
+                $queryBuilder->andWhere($this->addWhere($key, $value));
             } catch (\RuntimeException $e) {
                 return $this->raise($e->getMessage(), 400);
             }
@@ -133,32 +131,33 @@ class RestApi
                 }
 
                 try {
-                    $searchArray[] = $this->addWhere("{$column}__icontains", $search); // TODO: $qb->expr()->like($column, ':search');
+                    // TODO: $queryBuilder->expr()->like($column, ':search');
+                    $searchArray[] = $this->addWhere("{$column}__icontains", $search);
                 } catch (\RuntimeException $e) {
                     return $this->raise($e->getMessage(), 400);
                 }
             }
-            $qb->andWhere(call_user_func_array(array($qb->expr(), 'orX'), $searchArray));
-            // TODO: $qb->setParameter(':search', "%$search%");
+            // TODO: $queryBuilder->setParameter(':search', "%$search%");
+            $queryBuilder->andWhere(call_user_func_array(array($queryBuilder->expr(), 'orX'), $searchArray));
         }
 
         // return the number of total rows that matched the query
-        $total = (int) $qb->select('COUNT(*)')->execute()->fetchColumn();
+        $total = (int) $queryBuilder->select('COUNT(*)')->execute()->fetchColumn();
 
         $start = microtime(true);
-        $qb->select($fields);
-        $qb->orderBy($sort, $order);
-        $qb->setFirstResult($offset);
-        $qb->setMaxResults($limit);
-        $response = $qb->execute()->fetchAll();
+        $queryBuilder->select($fields);
+        $queryBuilder->orderBy($sort, $order);
+        $queryBuilder->setFirstResult($offset);
+        $queryBuilder->setMaxResults($limit);
+        $response = $queryBuilder->execute()->fetchAll();
         $queryTime = microtime(true) - $start;
 
         return $this->response($response, 200, [
             'X-Pagination-Limit' => $limit,
             'X-Pagination-Offset' => $offset,
             'X-Pagination-Total' => $total,
-            'X-Query' => $qb->getSQL(),
-            'X-Query-Time' => "{$queryTime}ms"
+            'X-Query' => $queryBuilder->getSQL(),
+            'X-Query-Time' => "{$queryTime}ms",
         ]);
     }
 
@@ -173,20 +172,22 @@ class RestApi
 
         // TODO: can we get around this check?
         if (true === array_key_exists('user_id', $params)) {
-            return $this->raise("Not allowed to POST a user_id", 400);
+            return $this->raise('Not allowed to POST a user_id', 400);
         }
 
         // TODO: can we get around this check?
         if (true === array_key_exists($pkField, $params)) {
-            return $this->raise("Not allowed to POST a primary key", 400);
+            return $this->raise('Not allowed to POST a primary key', 400);
         }
 
         if (false === empty($diff = array_diff(array_keys($params), $columns))) {
-            return $this->raise("Unrecognized fields detected: ".implode(', ', $diff), 400);
+            return $this->raise('Unrecognized fields detected: '.implode(', ', $diff), 400);
         }
 
         if (true === empty($params)) {
-            $fields = array_filter($columns, function($value) use ($pkField) { return $value !== $pkField; });
+            $fields = array_filter($columns, function ($value) use ($pkField) {
+                return $value !== $pkField;
+            });
 
             return $this->raise('Missing fields: '.implode(', ', $fields), 400);
         }
@@ -198,8 +199,8 @@ class RestApi
         // /////////////////////////////////////////////////////////////////////
 
         // TODO: determine the fields that are references to files.
-        $fileFields = array_filter($columns, function($v) {
-            return in_array($v, array('receipt', 'file'));
+        $fileFields = array_filter($columns, function ($value) {
+            return in_array($value, array('receipt', 'file'));
         });
 
         foreach ($fileFields as $fileField) {
@@ -225,26 +226,26 @@ class RestApi
 
         // /////////////////////////////////////////////////////////////////////
 
-        $qb = $this->database->createQueryBuilder();
-        $qb->insert($table);
+        $queryBuilder = $this->database->createQueryBuilder();
+        $queryBuilder->insert($table);
 
         foreach ($params as $column => $value) {
-            $qb->setValue($column, ":{$column}");
-            $qb->setParameter(":{$column}", $value);
+            $queryBuilder->setValue($column, ":{$column}");
+            $queryBuilder->setParameter(":{$column}", $value);
         }
 
         try {
-            $result = $qb->execute();
+            $queryBuilder->execute();
         } catch (NotNullConstraintViolationException $e) {
-            return $this->raise("Required parameters missing.", 400);
+            return $this->raise('Required parameters missing.', 400);
         }
 
-        $pk = $this->database->lastInsertId("{$table}_{$pkField}_seq"); // TODO: this is postgresql specific
+        $primaryKey = $this->database->lastInsertId("{$table}_{$pkField}_seq"); // TODO: this is postgresql specific
 
-        return $this->readResource($table, $pk);
+        return $this->readResource($table, $primaryKey);
     }
 
-    public function readResource($table, $pk, $params=[])
+    public function readResource($table, $primaryKey, $params = [])
     {
         if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
@@ -254,39 +255,37 @@ class RestApi
         $pkField = $this->getPrimaryKeyField($table);
 
         if (null === $pkField) {
-            return $this->raise("This operation is not suppored on this resource", 400);
+            return $this->raise('This operation is not suppored on this resource', 400);
         }
 
-        $fields = array_key_exists('_fields', $params) ? $params['_fields'] : false;
-        if ($fields) {
-            foreach (explode(",", $fields) as $field) {
+        $fields = array_key_exists('_fields', $params) ? $params['_fields'] : '*';
+        if ('*' !== $fields) {
+            foreach (explode(',', $fields) as $field) {
                 if (false === in_array($field, $columns)) {
                     return $this->raise("Unknown _field {$field} detected.", 400);
                 }
             }
-        } else {
-            $fields = implode(',', $columns);
         }
 
-        $qb = $this->database->createQueryBuilder();
-        $qb->select($fields);
-        $qb->from($table);
-        $qb->andWhere("{$pkField} = :pk");
-        $qb->setParameter(':pk', $pk);
+        $queryBuilder = $this->database->createQueryBuilder();
+        $queryBuilder->select($fields);
+        $queryBuilder->from($table);
+        $queryBuilder->andWhere("{$pkField} = :pk");
+        $queryBuilder->setParameter(':pk', $primaryKey);
 
         if (true === in_array('user_id', $columns)) {
-            $qb->andWhere("user_id = :user_id");
-            $qb->setParameter(':user_id', $this->user);
+            $queryBuilder->andWhere('user_id = :user_id');
+            $queryBuilder->setParameter(':user_id', $this->user);
         }
 
-        if (false === $result = $qb->execute()->fetch()) {
-            return $this->raise("Resource not found", 404);
+        if (false === $result = $queryBuilder->execute()->fetch()) {
+            return $this->raise('Resource not found', 404);
         }
 
         return $this->response($result);
     }
 
-    public function updateResource($table, $pk, $params)
+    public function updateResource($table, $primaryKey, $params)
     {
         if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
@@ -296,11 +295,11 @@ class RestApi
         $pkField = $this->getPrimaryKeyField($table);
 
         if (null === $pkField) {
-            return $this->raise("This operation is not suppored on this resource", 400);
+            return $this->raise('This operation is not suppored on this resource', 400);
         }
 
         if (false === empty($diff = array_diff(array_keys($params), $columns))) {
-            return $this->raise("Unrecognized fields detected: ".implode(', ', $diff), 400);
+            return $this->raise('Unrecognized fields detected: '.implode(', ', $diff), 400);
         }
 
         if (true === empty($params)) {
@@ -314,8 +313,8 @@ class RestApi
         // /////////////////////////////////////////////////////////////////////
 
         // TODO: determine the fields that are references to files.
-        $fileFields = array_filter($columns, function($v) {
-            return in_array($v, array('receipt', 'file'));
+        $fileFields = array_filter($columns, function ($value) {
+            return in_array($value, array('receipt', 'file'));
         });
 
         foreach ($fileFields as $fileField) {
@@ -341,32 +340,32 @@ class RestApi
 
         // /////////////////////////////////////////////////////////////////////
 
-        $qb = $this->database->createQueryBuilder();
-        $qb->update($table);
-        $qb->andWhere("{$pkField} = :pk");
-        $qb->setParameter(':pk', $pk);
+        $queryBuilder = $this->database->createQueryBuilder();
+        $queryBuilder->update($table);
+        $queryBuilder->andWhere("{$pkField} = :pk");
+        $queryBuilder->setParameter(':pk', $primaryKey);
 
         if (true === in_array('user_id', $columns)) {
-            $qb->andWhere("user_id = :user_id");
-            $qb->setParameter(':user_id', $this->user);
+            $queryBuilder->andWhere('user_id = :user_id');
+            $queryBuilder->setParameter(':user_id', $this->user);
         }
 
         foreach ($params as $column => $value) {
-            $qb->set($column, ":{$column}");
-            $qb->setParameter(":{$column}", $value);
+            $queryBuilder->set($column, ":{$column}");
+            $queryBuilder->setParameter(":{$column}", $value);
         }
 
         try {
             // TODO: if this returns 0 an error occurred? how to expose this over the api?
-            $result = $qb->execute();
-        } catch(\Doctrine\DBAL\Exception\DriverException $e) {
+            $queryBuilder->execute();
+        } catch (\Doctrine\DBAL\Exception\DriverException $e) {
             return $this->raise($e->getMessage(), 400);
         }
 
-        return $this->readResource($table, $pk);
+        return $this->readResource($table, $primaryKey);
     }
 
-    public function deleteResource($table, $pk)
+    public function deleteResource($table, $primaryKey)
     {
         if (false === in_array($table, $this->getTables())) {
             return $this->raise("Resource $table does not exist", 400);
@@ -376,23 +375,23 @@ class RestApi
         $pkField = $this->getPrimaryKeyField($table);
 
         if (null === $pkField) {
-            return $this->raise("This operation is not suppored on this resource", 400);
+            return $this->raise('This operation is not suppored on this resource', 400);
         }
 
-        $qb = $this->database->createQueryBuilder();
-        $qb->delete($table);
-        $qb->andWhere("{$pkField} = :pk");
-        $qb->setParameter(':pk', $pk);
+        $queryBuilder = $this->database->createQueryBuilder();
+        $queryBuilder->delete($table);
+        $queryBuilder->andWhere("{$pkField} = :pk");
+        $queryBuilder->setParameter(':pk', $primaryKey);
 
         if (true === in_array('user_id', $columns)) {
-            $qb->andWhere("user_id = :user_id");
-            $qb->setParameter(':user_id', $this->user);
+            $queryBuilder->andWhere('user_id = :user_id');
+            $queryBuilder->setParameter(':user_id', $this->user);
         }
 
-        $result = $qb->execute();
+        $result = $queryBuilder->execute();
 
         if (0 === $result) {
-            return $this->raise("Resource not found", 404);
+            return $this->raise('Resource not found', 404);
         }
 
         return $this->response(null, 204);
@@ -401,36 +400,36 @@ class RestApi
     public function fetchFile($hash)
     {
         if (false === $this->storage->exists($hash)) {
-            return $this->response("", 404);
+            return $this->response('', 404);
         }
 
         return $this->storage->hashToFullFilePath($hash);
     }
 
-    protected function raise($message, $code=503)
+    protected function raise($message, $code = 503)
     {
         return $this->response(array('message' => $message), $code);
     }
 
-    protected function response($body, $code=200, $headers=[])
+    protected function response($body, $code = 200, $headers = [])
     {
         return array(
             'body' => $body,
             'code' => $code,
-            'headers' => $headers
+            'headers' => $headers,
         );
     }
 
     protected function getTables()
     {
-        $sm = $this->database->getSchemaManager();
+        $schemaManager = $this->database->getSchemaManager();
         $resources = [];
 
-        foreach ($sm->listTables() as $table) {
+        foreach ($schemaManager->listTables() as $table) {
             $resources[] = $table->getName();
         }
-        foreach ($sm->listViews() as $view) {
-            $resources[] = $view->getShortestName("public");
+        foreach ($schemaManager->listViews() as $view) {
+            $resources[] = $view->getShortestName('public');
         }
 
         sort($resources);
@@ -440,10 +439,10 @@ class RestApi
 
     protected function getTableColumns($table)
     {
-        $sm = $this->database->getSchemaManager();
+        $schemaManager = $this->database->getSchemaManager();
         $columns = [];
 
-        foreach ($sm->listTableColumns($table) as $column) {
+        foreach ($schemaManager->listTableColumns($table) as $column) {
             $columns[] = $column->getName();
         }
 
@@ -452,11 +451,11 @@ class RestApi
 
     protected function getPrimaryKeyField($table)
     {
-        $sm = $this->database->getSchemaManager();
-        $details = $sm->listTableDetails($table);
+        $schemaManager = $this->database->getSchemaManager();
+        $details = $schemaManager->listTableDetails($table);
 
         if (false === $details->hasPrimaryKey()) {
-            return null;
+            return;
         }
 
         $pkColumns = $details->getPrimaryKeyColumns();
@@ -490,17 +489,15 @@ class RestApi
                 return "strftime('%Y', {$column}) = {$this->database->quote($value)}";
             } elseif ('postgresql' === $platform) {
                 return "date_part('year', {$column}) = {$this->database->quote($value)}";
-            } else {
-                throw new \RuntimeException("Unsupported platform {$platform}");
             }
+            throw new \RuntimeException("Unsupported platform {$platform}");
         } elseif ('month' === $lookupType) {
             if ('sqlite' === $platform) {
                 return "strftime('%m', {$column}) = {$this->database->quote($value)}";
             } elseif ('postgresql' === $platform) {
                 return "date_part('month', {$column}) = {$this->database->quote($value)}";
-            } else {
-                throw new \RuntimeException("Unsupported platform {$platform}");
             }
+            throw new \RuntimeException("Unsupported platform {$platform}");
         }
 
         if ('postgresql' === $platform) {

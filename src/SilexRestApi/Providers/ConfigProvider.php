@@ -16,7 +16,7 @@ class ConfigProvider implements ServiceProviderInterface
 
     public function register(Application $app)
     {
-        $config = require $this->filename;
+        $config = include $this->filename;
 
         foreach ($config as $key => $value) {
             $app[$key] = $value;

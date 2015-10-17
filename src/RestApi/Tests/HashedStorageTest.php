@@ -13,12 +13,14 @@ class HashedStorageTest extends \PHPUnit_Framework_TestCase
 
         if (false === file_exists($this->storagedir)) {
             mkdir($this->storagedir);
-        } else {
-            exec("rm -rf {$this->storagedir}/*");
+
+            return;
         }
+
+        exec("rm -rf {$this->storagedir}/*");
     }
 
-    protected function getTemporaryFile($content=null)
+    protected function getTemporaryFile($content = null)
     {
         $tempFile = tempnam($this->tempdir, 'w00t');
 
@@ -42,8 +44,8 @@ class HashedStorageTest extends \PHPUnit_Framework_TestCase
         $tempFile = $this->getTemporaryFile('Hello World');
         $hash = $storage->save($tempFile);
 
-        $this->assertEquals("b10a8db164e0754105b7a99be72e3fe5", $hash);
-        $this->assertTrue($storage->exists("b10a8db164e0754105b7a99be72e3fe5"));
+        $this->assertEquals('b10a8db164e0754105b7a99be72e3fe5', $hash);
+        $this->assertTrue($storage->exists('b10a8db164e0754105b7a99be72e3fe5'));
         $this->assertEquals("{$this->storagedir}/b/1/b10a8db164e0754105b7a99be72e3fe5", $storage->hashToFullFilePath($hash));
 
         $tempFile = $this->getTemporaryFile('Hello World');
