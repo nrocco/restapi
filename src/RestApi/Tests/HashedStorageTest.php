@@ -62,4 +62,29 @@ class HashedStorageTest extends \PHPUnit_Framework_TestCase
         $storage = new HashedStorage($this->storagedir);
         $storage->save(__DIR__.'/oohja.txt');
     }
+
+    /**
+     * @expectedException \RuntimeException
+     */
+    public function testNotAbleToCreateDirectory()
+    {
+        $storage = new HashedStorage('/');
+
+        $tempFile = $this->getTemporaryFile('Hello World');
+        $storage->save($tempFile);
+    }
+
+    /**
+     * @expectedException \RuntimeException
+     */
+    public function testNotAbleToMoveFile()
+    {
+        $storage = new HashedStorage($this->storagedir);
+        $tempFile = $this->getTemporaryFile('Hello World');
+
+        mkdir("{$this->storagedir}/b", 0700);
+        mkdir("{$this->storagedir}/b/1", 0500);
+
+        $hash = $storage->save($tempFile);
+    }
 }

@@ -125,18 +125,16 @@ class RestApi
         $search = array_key_exists('_search', $params) ? $params['_search'] : null;
         if (false === empty($search)) {
             $searchArray = [];
+
             foreach ($columns as $column) {
                 if (true === in_array($column, array($pkField, 'user_id'))) {
                     continue;
                 }
 
-                try {
-                    // TODO: $queryBuilder->expr()->like($column, ':search');
-                    $searchArray[] = $this->addWhere("{$column}__icontains", $search);
-                } catch (\RuntimeException $e) {
-                    return $this->raise($e->getMessage(), 400);
-                }
+                // TODO: $queryBuilder->expr()->like($column, ':search');
+                $searchArray[] = $this->addWhere("{$column}__icontains", $search);
             }
+
             // TODO: $queryBuilder->setParameter(':search', "%$search%");
             $queryBuilder->andWhere(call_user_func_array(array($queryBuilder->expr(), 'orX'), $searchArray));
         }

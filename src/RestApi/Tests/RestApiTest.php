@@ -41,9 +41,9 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $api = $this->getApi();
         $api->setUser('tester');
 
-        $api->createResource('todos', array('description' => 'hello world'));
-        $api->createResource('todos', array('description' => 'take out the trash'));
-        $api->createResource('todos', array('description' => 'watch tv'));
+        $api->createResource('todos', ['description' => 'hello world']);
+        $api->createResource('todos', ['description' => 'take out the trash']);
+        $api->createResource('todos', ['description' => 'watch tv']);
 
         return $api;
     }
@@ -93,6 +93,16 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(200, $todos['code']);
         $this->assertEquals(3, $todos['headers']['X-Pagination-Total']);
         $this->assertEquals('hello world', $todos['body'][0]['description']);
+    }
+
+    public function testReadCollectionFilter()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todos = $api->readCollection('todos', ['file__notnull' => 'yes', 'created__year' => 2014, 'updated__month' => 6]);
+        $this->assertEquals(200, $todos['code']);
+        $this->assertEquals(0, $todos['headers']['X-Pagination-Total']);
+        $this->assertEmpty($todos['body']);
     }
 
     public function testReadCollectionInvalidLookupType()
@@ -210,7 +220,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
     public function testCreateNonExistingResource()
     {
         $api = new RestApi($this->database);
-        $todo = $api->createResource('todos', array('description' => 'hello world'));
+        $todo = $api->createResource('todos', ['description' => 'hello world']);
 
         $this->assertInternalType('array', $todo);
         $this->assertEquals(400, $todo['code']);
@@ -225,7 +235,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
 
         $this->assertEquals('tester', $api->getUser());
 
-        $todo = $api->createResource('todos', array('description' => 'hello world'));
+        $todo = $api->createResource('todos', ['description' => 'hello world']);
 
         $this->assertInternalType('array', $todo);
         $this->assertEquals(200, $todo['code']);
@@ -275,7 +285,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertInternalType('array', $todo);
         $this->assertEquals(400, $todo['code']);
         $this->assertInternalType('array', $todo['body']);
-        $this->assertEquals('Missing fields: created, updated, user_id, category, description, done, urgency', $todo['body']['message']);
+        $this->assertEquals('Missing fields: created, updated, user_id, category, description, file, done, urgency', $todo['body']['message']);
     }
 
     public function testCreateResourceWithUnrecognizedFields()
@@ -443,5 +453,39 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $response = $api->updateResource('categories', 1, ['name' => 'test']);
         $this->assertEquals(400, $response['code']);
         $this->assertEquals('This operation is not suppored on this resource', $response['body']['message']);
+    }
+
+    public function testFetchFileDoesNotExist()
+    {
+        $storage = new \RestApi\HashedStorage(sys_get_temp_dir().'/__w00t__');
+
+        $api = $this->getApi();
+        $api->setStorage($storage);
+
+        $response = $api->fetchFile("b10a8db164e0754105b7a99be72e3fe5");
+        $this->assertEquals(404, $response['code']);
+    }
+
+    public function testHashedFileStorageIssues()
+    {
+        $storage = new \RestApi\HashedStorage(sys_get_temp_dir().'/__w00t__');
+
+        $api = $this->getApi();
+        $api->setUser('tester');
+        $api->setStorage($storage);
+
+        $this->assertEquals($storage, $api->getStorage());
+
+        $response = $api->createResource('todos', ['description' => 'hello world', 'file' => null]);
+        $this->assertEquals(200, $response['code']);
+        $this->assertEquals(null, $response['body']['file']);
+
+        $response = $api->updateResource('todos', $response['body']['id'], ['file' => 'non-existent']);
+        $this->assertEquals(400, $response['code']);
+        $this->assertEquals('file non-existent does not exist', $response['body']['message']);
+
+        $response = $api->createResource('todos', ['description' => 'hello world', 'file' => 'non-existent']);
+        $this->assertEquals(400, $response['code']);
+        $this->assertEquals('file non-existent does not exist', $response['body']['message']);
     }
 }

@@ -37,12 +37,12 @@ class HashedStorage
         $filePath = $this->hashToFullFilePath($hash);
 
         if (false === is_dir($directory)) {
-            if (true !== mkdir($directory, 0755, true)) {
+            if (true !== @mkdir($directory, 0755, true)) {
                 throw new \RuntimeException("Could not create parent directory {$directory}");
             }
         }
 
-        if (true !== rename($file, $filePath)) {
+        if (true !== @rename($file, $filePath)) {
             throw new \RuntimeException("Could not save file as {$filePath}");
         }
 

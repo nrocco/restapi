@@ -1,5 +1,5 @@
 help:
-	make [composer|test|coverage|phpcs|server]
+	make [composer|test|coverage|phpcs|phpmd|server|clear]
 
 vendor/autoload.php:
 	composer install
@@ -13,6 +13,9 @@ vendor/bin/phpcs: vendor/autoload.php
 vendor/bin/phpmd: vendor/autoload.php
 
 composer: vendor/autoload.php
+
+clear:
+	rm -rf build/
 
 test: vendor/bin/phpunit
 	vendor/bin/phpunit

@@ -5,6 +5,7 @@ CREATE TABLE "todos" (
     "user_id"     VARCHAR(200)  NOT NULL DEFAULT '',
     "category"    VARCHAR(200)  NOT NULL DEFAULT 'inbox',
     "description" TEXT          NOT NULL DEFAULT '',
+    "file"        VARCHAR(200),
     "done"        INTEGER       NOT NULL DEFAULT 0 CHECK(done IN (0, 1)),
     "urgency"     INTEGER       NOT NULL DEFAULT 2 CHECK(urgency IN (1, 2, 3))
 );
