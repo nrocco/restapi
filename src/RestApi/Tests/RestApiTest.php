@@ -56,7 +56,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEmpty($resources['headers']);
     }
 
-    public function testEmptyCollection()
+    public function testReadCollectionEmpty()
     {
         $api = $this->getApi();
 
@@ -71,7 +71,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(0, $todos['headers']['X-Pagination-Total']);
     }
 
-    public function testNonExistingCollection()
+    public function testReadCollectionNonExisting()
     {
         $api = new RestApi($this->database);
         $todos = $api->readCollection('todos');
@@ -82,7 +82,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('Resource todos does not exist', $todos['body']['message']);
     }
 
-    public function testCollection()
+    public function testReadCollection()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -92,7 +92,16 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('hello world', $todos['body'][0]['description']);
     }
 
-    public function testSearchCollection()
+    public function testReadCollectionInvalidLookupType()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todos = $api->readCollection('todos', ['description__foo' => 'bar']);
+        $this->assertEquals(400, $todos['code']);
+        $this->assertEquals('Lookup type `foo` does not exist.', $todos['body']['message']);
+    }
+
+    public function testReadCollectionSearch()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -101,7 +110,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(1, $todos['headers']['X-Pagination-Total']);
     }
 
-    public function testLimitCollection()
+    public function testReadCollectionLimitOffset()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -120,7 +129,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(2, $todos['headers']['X-Pagination-Offset']);
     }
 
-    public function testLimitCollectionInvalidLimitAndOffset()
+    public function testReadCollectionInvalidLimitAndOffset()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -133,7 +142,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('Invalid value for _offset: BLAAT', $todos['body']['message']);
     }
 
-    public function testSortCollection()
+    public function testReadCollectionSort()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -143,7 +152,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('watch tv', $todos['body'][0]['description']);
     }
 
-    public function testSortCollectionUnknownProperty()
+    public function testReadCollectionSortUnknownProperty()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -155,7 +164,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(200, $todos['code']);
     }
 
-    public function testSortCollectionInvalidOrder()
+    public function testReadCollectionSortInvalidOrder()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -164,7 +173,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('Invalid value for _order: BLAAT', $todos['body']['message']);
     }
 
-    public function testCollectionWithSpecificFields()
+    public function testReadCollectionWithSpecificFields()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -177,7 +186,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertArrayNotHasKey('updated', $todos['body'][0]);
     }
 
-    public function testCollectionWithUnknownFields()
+    public function testReadCollectionWithUnknownFields()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -186,7 +195,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('Unknown _field foobar detected.', $todos['body']['message']);
     }
 
-    public function testCollectionFilterUnknownFields()
+    public function testReadCollectionFilterUnknownFields()
     {
         $api = $this->getApiWithDataLoaded();
 
@@ -279,7 +288,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals('Unrecognized fields detected: foo', $todo['body']['message']);
     }
 
-    public function testReadUnknownResource()
+    public function testReadResourceNotExisting()
     {
         $api = new RestApi($this->database);
 
@@ -295,6 +304,15 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $todo = $api->readResource('todos', 293);
         $this->assertEquals(404, $todo['code']);
         $this->assertEquals('Resource not found', $todo['body']['message']);
+    }
+
+    public function testReadResourceNotSupported()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todo = $api->readResource('categories', 293);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('This operation is not suppored on this resource', $todo['body']['message']);
     }
 
     public function testReadResource()
@@ -323,6 +341,15 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertArrayNotHasKey('updated', $todo['body']);
     }
 
+    public function testReadResourceWithUnknownFields()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todo = $api->readResource('todos', 1, ['_fields' => 'foo,bar']);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('Unknown _field foo detected.', $todo['body']['message']);
+    }
+
     public function testDeleteResource()
     {
         $api = $this->getApiWithDataLoaded();
@@ -334,6 +361,24 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEquals(404, $todo['code']);
     }
 
+    public function testDeleteNonExistingResource()
+    {
+        $api = new RestApi($this->database);
+
+        $todo = $api->deleteResource('todos', 1);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('Resource todos does not exist', $todo['body']['message']);
+    }
+
+    public function testDeleteResourceUnsupported()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todo = $api->deleteResource('categories', 1);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('This operation is not suppored on this resource', $todo['body']['message']);
+    }
+
     public function testUpdateResource()
     {
         $api = $this->getApiWithDataLoaded();
@@ -341,5 +386,59 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $todo = $api->updateResource('todos', 1, ['done' => 1]);
         $this->assertEquals(200, $todo['code']);
         $this->assertEquals(1, $todo['body']['done']);
+    }
+
+    public function testUpdateResourceNonExisting()
+    {
+        $api = new RestApi($this->database);
+
+        $todo = $api->updateResource('todos', 1, ['done' => 1]);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('Resource todos does not exist', $todo['body']['message']);
+    }
+
+    public function testUpdateResourceWithPrimaryKey()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todo = $api->updateResource('todos', 1, ['id' => 11]);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('Not allowed to change the primary key of this resource', $todo['body']['message']);
+    }
+
+    public function testUpdateResourceWithUserId()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todo = $api->updateResource('todos', 1, ['user_id' => 'blaat']);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('Not allowed to change the user of this resource', $todo['body']['message']);
+    }
+
+    public function testUpdateResourceWithUnrecognizedFields()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todo = $api->updateResource('todos', 1, ['foo' => 'bar']);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('Unrecognized fields detected: foo', $todo['body']['message']);
+    }
+
+    public function testUpdateResourceWithEmptyRequest()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $todo = $api->updateResource('todos', 1, []);
+        $this->assertEquals(400, $todo['code']);
+        $this->assertEquals('Empty request not allowed', $todo['body']['message']);
+    }
+
+    public function testUpdateResourceWithoutPrimaryKey()
+    {
+        $api = $this->getApiWithDataLoaded();
+
+        $response = $api->updateResource('categories', 1, ['name' => 'test']);
+        $this->assertEquals(400, $response['code']);
+        $this->assertEquals('This operation is not suppored on this resource', $response['body']['message']);
     }
 }

@@ -114,7 +114,11 @@ class RestApi
                 return $this->raise("Cannot filter on unknown property: {$key}", 400);
             }
 
-            $qb->andWhere($this->addWhere($key, $value));
+            try {
+                $qb->andWhere($this->addWhere($key, $value));
+            } catch (\RuntimeException $e) {
+                return $this->raise($e->getMessage(), 400);
+            }
         }
 
         $search = array_key_exists('_search', $params) ? $params['_search'] : null;
@@ -124,7 +128,12 @@ class RestApi
                 if (true === in_array($column, array($pkField, 'user_id'))) {
                     continue;
                 }
-                $searchArray[] = $this->addWhere("{$column}__icontains", $search); // TODO: $qb->expr()->like($column, ':search');
+
+                try {
+                    $searchArray[] = $this->addWhere("{$column}__icontains", $search); // TODO: $qb->expr()->like($column, ':search');
+                } catch (\RuntimeException $e) {
+                    return $this->raise($e->getMessage(), 400);
+                }
             }
             $qb->andWhere(call_user_func_array(array($qb->expr(), 'orX'), $searchArray));
             // TODO: $qb->setParameter(':search', "%$search%");
