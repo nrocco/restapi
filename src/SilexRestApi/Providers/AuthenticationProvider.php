@@ -14,12 +14,17 @@ class AuthenticationProvider implements ServiceProviderInterface
     {
         $app['auth.jwt_validator'] = $app->protect(function ($token) use ($app) {
             try {
-                $decodedToken = JWT::decode($token, $app['auth.options']['secret_key'], array('HS256'));
+                $decodedToken = JWT::decode(
+                    $token,
+                    $app['auth.options']['token_secret_key'],
+                    $app['auth.options']['token_algorithms']
+                );
 
-                // TODO: check if the token is still valid and contains valid data
-                $app['api']->setUser($decodedToken->user);
+                if (isset($decodedToken->iss) and $decodedToken->iss === $app['auth.options']['token_issuer']) {
+                    $app['api']->setUser($decodedToken->user);
 
-                return true;
+                    return true;
+                }
             } catch (\Exception $e) {
                 // TODO: handle this properly
             }
@@ -67,7 +72,15 @@ class AuthenticationProvider implements ServiceProviderInterface
             $password = $app['request']->request->get('password');
 
             if (isset($username) and password_verify($password, $app['restapi']['users'][$username])) {
-                $token = JWT::encode(['user' => $username], $app['auth.options']['secret_key']);
+                $payload = [
+                    'iss' => $app['auth.options']['token_issuer'],
+                    'iat' => mktime(),
+                    'user' => $username
+                ];
+                $token = JWT::encode(
+                    $payload,
+                    $app['auth.options']['token_secret_key']
+                );
                 $cookie = new Cookie(
                     'TOKEN',
                     $token,
