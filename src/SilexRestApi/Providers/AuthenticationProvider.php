@@ -12,21 +12,22 @@ class AuthenticationProvider implements ServiceProviderInterface
 {
     public function register(Application $app)
     {
-        $app['auth.jwt_validator'] = $app->protect(function($token) use ($app) {
+        $app['auth.jwt_validator'] = $app->protect(function ($token) use ($app) {
             try {
                 $decodedToken = JWT::decode($token, $app['auth.options']['secret_key'], array('HS256'));
 
                 // TODO: check if the token is still valid and contains valid data
                 $app['api']->setUser($decodedToken->user);
+
                 return true;
-            } catch(\Exception $e) {
+            } catch (\Exception $e) {
                 // TODO: handle this properly
             }
 
             return false;
         });
 
-        $app['auth'] = $app->protect(function() use ($app) {
+        $app['auth'] = $app->protect(function () use ($app) {
             if (true === $app['request']->cookies->has('TOKEN')) {
                 $token = $app['request']->cookies->get('TOKEN');
 
@@ -39,6 +40,7 @@ class AuthenticationProvider implements ServiceProviderInterface
 
                 if (true === password_verify($password, $app['restapi']['users'][$username])) {
                     $app['api']->setUser($username);
+
                     return;
                 }
             } elseif (true === $app['request']->headers->has('authorization')) {
@@ -57,19 +59,19 @@ class AuthenticationProvider implements ServiceProviderInterface
                 return;
             }
 
-            return $app->json(["message" => "Unauthorized"], 401);
+            return $app->json(['message' => 'Unauthorized'], 401);
         });
 
-        $app->post('/login', function() use ($app) {
+        $app->post('/login', function () use ($app) {
             $username = $app['request']->request->get('username');
             $password = $app['request']->request->get('password');
 
             if (isset($username) and password_verify($password, $app['restapi']['users'][$username])) {
-                $token = JWT::encode(["user" => $username], $app['auth.options']['secret_key']);
+                $token = JWT::encode(['user' => $username], $app['auth.options']['secret_key']);
                 $cookie = new Cookie(
                     'TOKEN',
                     $token,
-                    mktime()+$app['auth.options']['cookie_lifetime'],
+                    mktime() + $app['auth.options']['cookie_lifetime'],
                     $app['auth.options']['cookie_path'],
                     $app['auth.options']['cookie_domain'],
                     $app['auth.options']['cookie_secure'],
@@ -90,8 +92,7 @@ class AuthenticationProvider implements ServiceProviderInterface
                 return $response;
             }
 
-
-            return $app->json(["message" => "Unauthorized"], 401);
+            return $app->json(['message' => 'Unauthorized'], 401);
         });
     }
 
