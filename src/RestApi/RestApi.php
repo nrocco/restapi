@@ -25,12 +25,14 @@ class RestApi
     ];
 
     protected $database;
+    protected $schemaMetaData;
     protected $user;
     protected $storage;
 
     public function __construct(Connection $database)
     {
         $this->database = $database;
+        $this->cache = sys_get_temp_dir().'/schema.cache';
     }
 
     public function setUser($user)
@@ -422,48 +424,70 @@ class RestApi
 
     protected function getTables()
     {
-        $schemaManager = $this->database->getSchemaManager();
-        $resources = [];
+        $schema = $this->getSchemaMetaData();
 
-        foreach ($schemaManager->listTables() as $table) {
-            $resources[] = $table->getName();
-        }
-        foreach ($schemaManager->listViews() as $view) {
-            $resources[] = $view->getShortestName('public');
-        }
-
-        sort($resources);
-
-        return $resources;
+        return array_keys($schema);
     }
 
     protected function getTableColumns($table)
     {
-        $schemaManager = $this->database->getSchemaManager();
-        $columns = [];
+        $schema = $this->getSchemaMetaData();
 
-        foreach ($schemaManager->listTableColumns($table) as $column) {
-            $columns[] = $column->getName();
-        }
-
-        return $columns;
+        return $schema[$table]['columns'];
     }
 
     protected function getPrimaryKeyField($table)
     {
-        $schemaManager = $this->database->getSchemaManager();
-        $details = $schemaManager->listTableDetails($table);
+        $schema = $this->getSchemaMetaData();
 
-        if (false === $details->hasPrimaryKey()) {
-            return;
+        return $schema[$table]['pk'];
+    }
+
+    protected function getSchemaMetaData()
+    {
+        if (!$this->schemaMetaData) {
+            if (!file_exists($this->cache)) {
+                $schemaManager = $this->database->getSchemaManager();
+                $resources = [];
+
+                foreach ($schemaManager->listTables() as $table) {
+                    $resources[$table->getName()] = [];
+                }
+                foreach ($schemaManager->listViews() as $view) {
+                    $resources[$view->getShortestName('public')] = [];
+                }
+
+                foreach ($resources as $table => &$tableDetails) {
+                    $details = $schemaManager->listTableDetails($table);
+                    $tableDetails['name'] = $details->getName();
+
+                    if (true === $details->hasPrimaryKey()) {
+                        $pkColumns = $details->getPrimaryKeyColumns();
+                        if (count($pkColumns) > 1) {
+                            throw new \RuntimeException(
+                                "Resource {$table} uses a composite primary key which is not supported"
+                            );
+                        }
+                        $tableDetails['pk'] = reset($pkColumns);
+                    } else {
+                        $tableDetails['pk'] = null;
+                    }
+
+                    $tableDetails['columns'] = [];
+                    foreach ($details->getColumns() as $column) {
+                        $tableDetails['columns'][] = $column->getName();
+                    }
+                }
+
+                file_put_contents($this->cache, json_encode($resources));
+
+                $this->schemaMetaData = $resources;
+            } else {
+                $this->schemaMetaData = json_decode(file_get_contents($this->cache), true);
+            }
         }
 
-        $pkColumns = $details->getPrimaryKeyColumns();
-        if (count($pkColumns) > 1) {
-            throw new \RuntimeException("Resource {$table} uses a composite primary key which is not supported");
-        }
-
-        return reset($pkColumns);
+        return $this->schemaMetaData;
     }
 
     public function addWhere($key, $value)

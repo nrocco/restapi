@@ -16,6 +16,10 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
      */
     public function setUp()
     {
+        if (file_exists(sys_get_temp_dir().'/schema.cache')) {
+            unlink(sys_get_temp_dir().'/schema.cache');
+        }
+
         $this->database = DriverManager::getConnection(
             ['url' => 'sqlite:///:memory:'],
             new Configuration()
