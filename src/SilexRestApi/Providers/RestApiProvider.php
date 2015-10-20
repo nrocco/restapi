@@ -25,7 +25,7 @@ class RestApiProvider implements ServiceProviderInterface
 
         $storage = new HashedStorage($app['restapi']['storage_path']);
 
-        $app['api'] = new RestApi($app['db']);
+        $app['api'] = new RestApi($app['db'], $app['restapi']['schema_cache']);
         $app['api']->setStorage($storage);
     }
 

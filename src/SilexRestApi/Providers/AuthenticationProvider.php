@@ -75,7 +75,7 @@ class AuthenticationProvider implements ServiceProviderInterface
                 $payload = [
                     'iss' => $app['auth.options']['token_issuer'],
                     'iat' => mktime(),
-                    'user' => $username
+                    'user' => $username,
                 ];
                 $token = JWT::encode(
                     $payload,

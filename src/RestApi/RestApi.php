@@ -26,13 +26,14 @@ class RestApi
 
     protected $database;
     protected $schemaMetaData;
+    protected $schemaCache;
     protected $user;
     protected $storage;
 
-    public function __construct(Connection $database)
+    public function __construct(Connection $database, $schemaCache = null)
     {
         $this->database = $database;
-        $this->cache = sys_get_temp_dir().'/schema.cache';
+        $this->schemaCache = $schemaCache;
     }
 
     public function setUser($user)
@@ -426,7 +427,7 @@ class RestApi
     {
         $schema = $this->getSchemaMetaData();
 
-        return array_keys($schema);
+        return is_array($schema) ? array_keys($schema) : [];
     }
 
     protected function getTableColumns($table)
@@ -446,7 +447,7 @@ class RestApi
     protected function getSchemaMetaData()
     {
         if (!$this->schemaMetaData) {
-            if (!file_exists($this->cache)) {
+            if (!$this->schemaCache || !file_exists($this->schemaCache)) {
                 $schemaManager = $this->database->getSchemaManager();
                 $resources = [];
 
@@ -479,11 +480,13 @@ class RestApi
                     }
                 }
 
-                file_put_contents($this->cache, json_encode($resources));
+                if ($this->schemaCache) {
+                    file_put_contents($this->schemaCache, json_encode($resources));
+                }
 
                 $this->schemaMetaData = $resources;
             } else {
-                $this->schemaMetaData = json_decode(file_get_contents($this->cache), true);
+                $this->schemaMetaData = json_decode(file_get_contents($this->schemaCache), true);
             }
         }
 

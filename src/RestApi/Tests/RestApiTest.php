@@ -63,6 +63,24 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $this->assertEmpty($resources['headers']);
     }
 
+    public function testCacheSchemaMetaData()
+    {
+        $stmt = $this->database->prepare('CREATE TABLE "test" ("name" TEXT)');
+        $result = $stmt->execute();
+
+        $cacheFile = sys_get_temp_dir().'/schema.cache';
+
+        $api = new RestApi($this->database, $cacheFile);
+        $resources = $api->listResources();
+
+        $schemaMetaData = '{"test":{"name":"test","pk":null,"columns":["name"]}}';
+        $this->assertEquals($schemaMetaData, file_get_contents($cacheFile));
+
+        // this loads the schema from the cache
+        $api = new RestApi($this->database, $cacheFile);
+        $resources = $api->listResources();
+    }
+
     public function testReadCollectionEmpty()
     {
         $api = $this->getApi();
@@ -466,7 +484,7 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
         $api = $this->getApi();
         $api->setStorage($storage);
 
-        $response = $api->fetchFile("b10a8db164e0754105b7a99be72e3fe5");
+        $response = $api->fetchFile('b10a8db164e0754105b7a99be72e3fe5');
         $this->assertEquals(404, $response['code']);
     }
 
