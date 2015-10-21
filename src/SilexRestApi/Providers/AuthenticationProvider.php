@@ -60,8 +60,10 @@ class AuthenticationProvider implements ServiceProviderInterface
                 }
             }
 
-            if ('/login' === $app['request']->getRequestUri() and 'POST' === $app['request']->getMethod()) {
-                return;
+            if ('OPTIONS' === $app['request']->getMethod()) {
+                return;  // this is a cors preflight request
+            } elseif ('/login' === $app['request']->getRequestUri() and 'POST' === $app['request']->getMethod()) {
+                return;  // this is the login route
             }
 
             return $app->json(['message' => 'Unauthorized'], 401);
