@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'debug' => true,
+    'debug' => false,
 
     'db.options' => [
         'driver'   => 'pdo_sqlite',
@@ -19,7 +19,7 @@ return [
         'cookie_lifetime' => 60*60*24*30,
         'cookie_path' => '/',
         'cookie_domain' => '',
-        'cookie_secure' => false,
+        'cookie_secure' => true,
         'cookie_httponly' => true
     ],
 
