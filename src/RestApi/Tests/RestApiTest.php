@@ -3,7 +3,6 @@
 namespace RestApi\Tests;
 
 use RestApi\RestApi;
-use Doctrine\DBAL\Schema\Schema;
 use Doctrine\DBAL\DriverManager;
 use Doctrine\DBAL\Configuration;
 
