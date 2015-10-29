@@ -120,7 +120,12 @@ class RestApiTest extends \PHPUnit_Framework_TestCase
     {
         $api = $this->getApiWithDataLoaded();
 
-        $todos = $api->readCollection('todos', ['file__notnull' => 'yes', 'created__year' => 2014, 'updated__month' => 6]);
+        $todos = $api->readCollection('todos', [
+            'file__notnull' => 'yes',
+            'created__year' => 2014,
+            'updated__month' => 6,
+            'updated__day' => 1
+        ]);
         $this->assertEquals(200, $todos['code']);
         $this->assertEquals(0, $todos['headers']['X-Pagination-Total']);
         $this->assertEmpty($todos['body']);
