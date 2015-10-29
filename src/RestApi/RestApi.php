@@ -20,6 +20,7 @@ class RestApi
         'contains' => 'LIKE',
         'icontains' => 'LIKE', //TODO: on postgres this is ilike
 
+        'day' => '=',
         'month' => '=',
         'year' => '=',
     ];
@@ -523,6 +524,13 @@ class RestApi
                 return "strftime('%m', {$column}) = {$this->database->quote($value)}";
             } elseif ('postgresql' === $platform) {
                 return "date_part('month', {$column}) = {$this->database->quote($value)}";
+            }
+            throw new \RuntimeException("Unsupported platform {$platform}");
+        } elseif ('day' === $lookupType) {
+            if ('sqlite' === $platform) {
+                return "strftime('%d', {$column}) = {$this->database->quote($value)}";
+            } elseif ('postgresql' === $platform) {
+                return "date_part('day', {$column}) = {$this->database->quote($value)}";
             }
             throw new \RuntimeException("Unsupported platform {$platform}");
         }
