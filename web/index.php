@@ -25,6 +25,16 @@ $app->get('/files/{hash}', function($hash) use ($app) {
     return $app->sendFile($app['api']->fetchFile($hash));
 });
 
+$app->get('/thumbs/{hash}', function($hash) use ($app) {
+    $thumb = $app['restapi']['thumbs_path']."/".$app['storage']->hashToFilePath($hash).".png";
+
+    try {
+        return $app->sendFile($thumb);
+    } catch (\Exception $e) {
+        return new \Symfony\Component\HttpFoundation\Response(null, 404);
+    }
+});
+
 $app->get('/{table}', function($table) use ($app) {
     return $app['api']->readCollection($table, $app['request']->query->all());
 });
