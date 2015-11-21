@@ -23,10 +23,10 @@ class RestApiProvider implements ServiceProviderInterface
             return $app->json($response['body'], $response['code'], $response['headers']);
         });
 
-        $storage = new HashedStorage($app['restapi']['storage_path']);
+        $app['storage'] = new HashedStorage($app['restapi']['storage_path']);
 
         $app['api'] = new RestApi($app['db'], $app['restapi']['schema_cache']);
-        $app['api']->setStorage($storage);
+        $app['api']->setStorage($app['storage']);
     }
 
     public function boot(Application $app)
