@@ -25,6 +25,7 @@ return [
 
     'restapi' => [
         'storage_path' => __DIR__.'/_files',
+        'thumbs_path' => __DIR__.'/_thumbs',
         'schema_cache' => __DIR__.'/schema.cache',
         'users' => [
             // Add users here
