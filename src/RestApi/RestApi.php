@@ -29,6 +29,7 @@ class RestApi
     protected $schemaMetaData;
     protected $schemaCache;
     protected $user;
+    protected $debug = false;
     protected $storage;
 
     public function __construct(Connection $database, $schemaCache = null)
@@ -45,6 +46,16 @@ class RestApi
     public function getUser()
     {
         return $this->user;
+    }
+
+    public function setDebug($debug)
+    {
+        $this->debug = $debug;
+    }
+
+    public function getDebug()
+    {
+        return $this->debug;
     }
 
     public function setStorage($storage)
@@ -154,13 +165,18 @@ class RestApi
         $response = $queryBuilder->execute()->fetchAll();
         $queryTime = microtime(true) - $start;
 
-        return $this->response($response, 200, [
+        $headers = [
             'X-Pagination-Limit' => $limit,
             'X-Pagination-Offset' => $offset,
             'X-Pagination-Total' => $total,
-            'X-Query' => $queryBuilder->getSQL(),
-            'X-Query-Time' => "{$queryTime}ms",
-        ]);
+        ];
+
+        if ($this->getDebug()) {
+            $headers['X-Query'] = $queryBuilder->getSQL();
+            $headers['X-Query-Time'] = "{$queryTime}ms";
+        }
+
+        return $this->response($response, 200, $headers);
     }
 
     public function createResource($table, $params)
