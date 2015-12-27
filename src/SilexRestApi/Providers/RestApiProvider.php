@@ -32,7 +32,7 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
         $app['restapi.listener.request_json'] = $app->protect(function () use ($app) {
             if (0 === strpos($app['request']->headers->get('Content-Type'), 'application/json')) {
                 $data = json_decode($app['request']->getContent(), true);
-                $app['request']->request->replace(is_array($data) ? $data : array());
+                $app['request']->request->replace(is_array($data) ? $data : []);
             }
         });
 
