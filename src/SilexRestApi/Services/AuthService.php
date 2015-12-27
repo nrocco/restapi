@@ -8,13 +8,23 @@ use Symfony\Component\HttpFoundation\Request;
 
 class AuthService
 {
-    protected $options;
+    protected $tokenOptions;
+    protected $cookieOptions;
     protected $users;
 
-    public function __construct($options, $users)
+    public function __construct($users)
     {
-        $this->options = $options;
         $this->users = $users;
+    }
+
+    public function setTokenOptions($tokenOptions)
+    {
+        $this->tokenOptions = $tokenOptions;
+    }
+
+    public function setCookieOptions($cookieOptions)
+    {
+        $this->cookieOptions = $cookieOptions;
     }
 
     public function verifyCredentials($username, $password)
@@ -27,14 +37,14 @@ class AuthService
         try {
             $decodedToken = JWT::decode(
                 $token,
-                $this->options['token_secret_key'],
-                $this->options['token_algorithms']
+                $this->tokenOptions['secret_key'],
+                $this->tokenOptions['algorithms']
             );
         } catch (\Exception $e) {
             return false;
         }
 
-        if (!isset($decodedToken->iss) or $decodedToken->iss !== $this->options['token_issuer']) {
+        if (!isset($decodedToken->iss) or $decodedToken->iss !== $this->tokenOptions['issuer']) {
             return false;
         }
 
@@ -82,14 +92,14 @@ class AuthService
     public function createJwtTokenForUser($username)
     {
         $payload = [
-            'iss' => $this->options['token_issuer'],
+            'iss' => $this->tokenOptions['issuer'],
             'iat' => mktime(),
             'user' => $username,
         ];
 
         $token = JWT::encode(
             $payload,
-            $this->options['token_secret_key']
+            $this->tokenOptions['secret_key']
         );
 
         return $token;
@@ -100,11 +110,11 @@ class AuthService
         return new Cookie(
             'TOKEN',
             $token,
-            $this->options['cookie_lifetime'] + mktime(),
-            $this->options['cookie_path'],
-            $this->options['cookie_domain'],
-            $this->options['cookie_secure'],
-            $this->options['cookie_httponly']
+            $this->cookieOptions['lifetime'] + mktime(),
+            $this->cookieOptions['path'],
+            $this->cookieOptions['domain'],
+            $this->cookieOptions['secure'],
+            $this->cookieOptions['httponly']
         );
     }
 
@@ -114,10 +124,10 @@ class AuthService
             'TOKEN',
             'deleted',
             1,
-            $this->options['cookie_path'],
-            $this->options['cookie_domain'],
-            $this->options['cookie_secure'],
-            $this->options['cookie_httponly']
+            $this->cookieOptions['path'],
+            $this->cookieOptions['domain'],
+            $this->cookieOptions['secure'],
+            $this->cookieOptions['httponly']
         );
     }
 }

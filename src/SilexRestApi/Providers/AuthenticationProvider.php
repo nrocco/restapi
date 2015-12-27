@@ -13,7 +13,11 @@ class AuthenticationProvider implements ServiceProviderInterface, ControllerProv
     public function register(Application $app)
     {
         $app['restapi.authentication'] = $app->share(function() use ($app) {
-            return new AuthService($app['auth.options'], $app['restapi']['users']);
+            $auth = new AuthService($app['restapi']['users']);
+            $auth->setTokenOptions($app['restapi']['token']);
+            $auth->setCookieOptions($app['restapi']['cookie']);
+
+            return $auth;
         });
 
         $app['restapi.auth_checker'] = $app->protect(function () use ($app) {
