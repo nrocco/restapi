@@ -14,7 +14,7 @@ class RestApiAuthProvider implements ServiceProviderInterface, ControllerProvide
 {
     public function register(Application $app)
     {
-        $app['restapi.authentication'] = $app->share(function() use ($app) {
+        $app['restapi.authentication'] = $app->share(function () use ($app) {
             $auth = new AuthService($app['restapi']['users']);
             $auth->setTokenOptions($app['restapi']['token']);
             $auth->setCookieOptions($app['restapi']['cookie']);
@@ -37,7 +37,7 @@ class RestApiAuthProvider implements ServiceProviderInterface, ControllerProvide
         });
 
         // register controllers
-        $app['restapi.controllers.auth'] = $app->share(function() use ($app) {
+        $app['restapi.controllers.auth'] = $app->share(function () use ($app) {
             return new RestApiAuthController($app['restapi.authentication']);
         });
     }
@@ -53,7 +53,7 @@ class RestApiAuthProvider implements ServiceProviderInterface, ControllerProvide
         // Parse request body if Content-Type: application/json
         $controllers->before($app['restapi.listener.request_json']);
 
-        $controllers->post('/login', function(Request $request) use ($app) {
+        $controllers->post('/login', function (Request $request) use ($app) {
             if ($request->request->has('username') and $request->request->has('password')) {
                 $username = $request->request->get('username');
                 $password = $request->request->get('password');
@@ -80,7 +80,7 @@ class RestApiAuthProvider implements ServiceProviderInterface, ControllerProvide
             return new JsonResponse(['message' => 'Unauthorized'], 401);
         });
 
-        $controllers->post('/logout', function() use ($app) {
+        $controllers->post('/logout', function () use ($app) {
             $response = new JsonResponse(['message' => 'Logged out'], 200);
             $cookie = $app['restapi.authentication']->deleteCookie();
             $response->headers->setCookie($cookie);
