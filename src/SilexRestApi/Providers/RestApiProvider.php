@@ -8,6 +8,8 @@ use SilexRestApi\Controllers\RestApiCrudController;
 use Silex\Application;
 use Silex\ControllerProviderInterface;
 use Silex\ServiceProviderInterface;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 
 class RestApiProvider implements ServiceProviderInterface, ControllerProviderInterface
 {
@@ -26,9 +28,15 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
             return $api;
         });
 
-        // register controllers
-        $app['restapi.controllers.crud'] = $app->share(function() use ($app) {
-            return new RestApiCrudController($app['restapi.service']);
+        $app['restapi.listener.request_json'] = $app->protect(function() use ($app) {
+            if (0 === strpos($app['request']->headers->get('Content-Type'), 'application/json')) {
+                $data = json_decode($app['request']->getContent(), true);
+                $app['request']->request->replace(is_array($data) ? $data : array());
+            }
+        });
+
+        $app['restapi.listener.response_json'] = $app->protect(function(array $response) use ($app) {
+            return $app->json($response['body'], $response['code'], $response['headers']);
         });
     }
 
@@ -40,31 +48,49 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
     {
         $controllers = $app['controllers_factory'];
 
-        // index
-        $controllers->get('/', 'restapi.controllers.crud:listResources');
+        // Parse request body if Content-Type: application/json
+        $controllers->before($app['restapi.listener.request_json']);
 
-        // collection routes
-        $controllers->get('/{table}', 'restapi.controllers.crud:readCollection');
-        $controllers->post('/{table}', 'restapi.controllers.crud:createResource');
-
-        // resource routes
-        $controllers->get('/{table}/{pk}', 'restapi.controllers.crud:readResource');
-        $controllers->post('/{table}/{pk}', 'restapi.controllers.crud:updateResource');
-        $controllers->put('/{table}/{pk}', 'restapi.controllers.crud:updateResource');
-        $controllers->patch('/{table}/{pk}', 'restapi.controllers.crud:updateResource');
-        $controllers->delete('/{table}/{pk}', 'restapi.controllers.crud:deleteResource');
+        $app->view($app['restapi.listener.response_json']);
 
         if (!empty($app['restapi.auth_checker'])) {
-            $controllers->before($app['restapi.auth_checker']);  // TODO this should be moved to index.php
+            $controllers->before($app['restapi.auth_checker']);
         }
+
+        // index
+        $controllers->get('/', function() use ($app) {
+            return $app['restapi.service']->listResources();
+        });
+
+        $controllers->get('/files/{hash}', function($hash) use ($app) {
+            return $app->sendFile($app['restapi.service']->fetchFile($hash));
+        });
+
+        // collection routes
+        $controllers->get('/{table}', function(Request $request, $table) use ($app) {
+            return $app['restapi.service']->readCollection($table, $request->query->all());
+        });
+        $controllers->post('/{table}', function(Request $request, $table) use ($app) {
+            $params = array_merge($request->request->all(), $request->files->all());
+            return $app['restapi.service']->createResource($table, $params);
+        });
+
+        // resource routes
+        $controllers->get('/{table}/{pk}', function(Request $request, $table, $pk) use($app) {
+            return $app['restapi.service']->readResource($table, $pk, $request->query->all());
+        });
+        $controllers->patch('/{table}/{pk}', function(Request $request, $table, $pk) use($app) {
+            $params = array_merge($request->request->all(), $request->files->all());
+            return $app['restapi.service']->updateResource($table, $pk, $params);
+        });
+        $controllers->delete('/{table}/{pk}', function($table, $pk) use ($app) {
+            return $app['restapi.service']->deleteResource($table, $pk);
+        });
 
         return $controllers;
     }
 }
 
-// $app->get('/files/{hash}', function($hash) use ($app) {
-//     return $app->sendFile($app['api']->fetchFile($hash));
-// });
 
 // $app->get('/thumbs/{hash}', function($hash) use ($app) {
 //     $thumb = $app['restapi']['thumbs_path']."/".$app['storage']->hashToFilePath($hash).".png";
