@@ -61,17 +61,17 @@ class HashedStorage
         return "{$this->basepath}/{$path}";
     }
 
-    protected function generateHash($file)
+    public function generateHash($file)
     {
         return md5_file($file);
     }
 
-    protected function hashToFilePath($hash)
+    public function hashToFilePath($hash)
     {
         return $this->hashToDirectory($hash).'/'.$hash;
     }
 
-    protected function hashToDirectory($hash)
+    public function hashToDirectory($hash)
     {
         return substr($hash, 0, 1).'/'.substr($hash, 1, 1);
     }

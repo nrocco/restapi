@@ -11,21 +11,25 @@ return [
     'cors.allowCredentials' => true,
     'cors.allowOrigin' => 'http://localhost:8000 http://0.0.0.0:8000',
 
-    'auth.options' => [
-        'token_secret_key' => 'set-this-to-something-long-and-secret',
-        'token_issuer' => 'localhost',
-        'token_algorithms' => ['HS256'],
-
-        'cookie_lifetime' => 60*60*24*30,
-        'cookie_path' => '/',
-        'cookie_domain' => '',
-        'cookie_secure' => true,
-        'cookie_httponly' => true
-    ],
-
     'restapi' => [
         'storage_path' => __DIR__.'/_files',
+        'thumbs_path' => __DIR__.'/_thumbs',
         'schema_cache' => __DIR__.'/schema.cache',
+
+        'token' => [
+            'secret_key' => 'set-this-to-something-long-and-secret',
+            'issuer' => 'localhost',
+            'algorithms' => ['HS256'],
+        ],
+
+        'cookie' => [
+            'lifetime' => 2592000, // 1 month
+            'path' => '/',
+            'domain' => '',
+            'secure' => true,
+            'httponly' => true,
+        ],
+
         'users' => [
             // Add users here
         ],
