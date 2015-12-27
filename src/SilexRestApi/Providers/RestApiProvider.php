@@ -9,6 +9,7 @@ use Silex\Application;
 use Silex\ControllerProviderInterface;
 use Silex\ServiceProviderInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
 
 class RestApiProvider implements ServiceProviderInterface, ControllerProviderInterface
@@ -66,6 +67,16 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
             return $app->sendFile($app['restapi.service']->fetchFile($hash));
         });
 
+        $controllers->get('/thumbs/{hash}', function($hash) use ($app) {
+            try {
+                return $app->sendFile(
+                    $app['restapi']['thumbs_path'].'/'.$app['restapi.storage']->hashToFilePath($hash).'.png'
+                );
+            } catch (\Exception $e) {
+                return new Response(null, 404);
+            }
+        });
+
         // collection routes
         $controllers->get('/{table}', function(Request $request, $table) use ($app) {
             return $app['restapi.service']->readCollection($table, $request->query->all());
@@ -90,14 +101,3 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
         return $controllers;
     }
 }
-
-
-// $app->get('/thumbs/{hash}', function($hash) use ($app) {
-//     $thumb = $app['restapi']['thumbs_path']."/".$app['storage']->hashToFilePath($hash).".png";
-
-//     try {
-//         return $app->sendFile($thumb);
-//     } catch (\Exception $e) {
-//         return new \Symfony\Component\HttpFoundation\Response(null, 404);
-//     }
-// });
