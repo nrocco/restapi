@@ -1,5 +1,6 @@
 {
   "name": "nrocco/restapi",
+  "license": "MIT",
   "require": {
     "doctrine/dbal": "^2.5",
     "silex/silex": "^1.3",
