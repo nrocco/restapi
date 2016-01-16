@@ -90,10 +90,10 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
         $controllers->get('/{table}/{pk}', function (Request $request, $table, $pk) use ($app) {
             return $app['restapi.service']->readResource($table, $pk, $request->query->all());
         });
-        $controllers->patch('/{table}/{pk}', function (Request $request, $table, $pk) use ($app) {
+        $controllers->match('/{table}/{pk}', function (Request $request, $table, $pk) use ($app) {
             $params = array_merge($request->request->all(), $request->files->all());
             return $app['restapi.service']->updateResource($table, $pk, $params);
-        });
+        })->method('POST|PATCH');
         $controllers->delete('/{table}/{pk}', function ($table, $pk) use ($app) {
             return $app['restapi.service']->deleteResource($table, $pk);
         });
