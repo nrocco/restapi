@@ -5,12 +5,13 @@ namespace SilexRestApi\Providers;
 use RestApi\HashedStorage;
 use RestApi\RestApi;
 use SilexRestApi\Controllers\RestApiCrudController;
+use SilexRestApi\Listeners\CorsListener;
 use Silex\Application;
 use Silex\ControllerProviderInterface;
 use Silex\ServiceProviderInterface;
 use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
 
 class RestApiProvider implements ServiceProviderInterface, ControllerProviderInterface
 {
@@ -28,6 +29,10 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
 
             return $api;
         });
+
+        if ($app['restapi']['cors'] !== false) {
+            $app['dispatcher']->addSubscriber(new CorsListener($app['restapi']['cors']));
+        }
 
         $app['restapi.listener.request_json'] = $app->protect(function () use ($app) {
             if (0 === strpos($app['request']->headers->get('Content-Type'), 'application/json')) {
