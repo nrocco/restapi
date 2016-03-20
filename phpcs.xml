@@ -1,7 +1,9 @@
 <?xml version="1.0"?>
 <ruleset name="RestApiStandard">
-  <description>A coding standard based on PSR2.</description>
-  <file>src</file>
-  <rule ref="PSR2" />
-  <exclude-pattern>*/Tests/*</exclude-pattern>
+    <description>A coding standard based on PSR2.</description>
+    <file>src</file>
+    <rule ref="PSR2">
+        <exclude name="Generic.Files.LineLength"/>
+    </rule>
+    <exclude-pattern>*/Tests/*</exclude-pattern>
 </ruleset>
