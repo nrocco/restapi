@@ -64,9 +64,7 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
             return $app->json($result['body'], $result['code'], $result['headers']);
         });
 
-        $controllers = $app['controllers_factory'];
-
-        $controllers->before(function (Request $request) {
+        $app->before(function (Request $request) {
             if (0 === strpos($request->headers->get('Content-Type'), 'application/json')) {
                 $data = json_decode($request->getContent(), true);
                 $request->request->replace(is_array($data) ? $data : []);
@@ -82,6 +80,8 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
                 return $app['restapi.middleware.cors']->processResponse($request, $response);
             });
         }
+
+        $controllers = $app['controllers_factory'];
 
         if ($app['restapi']['auth']) {
             $controllers->post('/auth/login', function (Request $request) use ($app) {
