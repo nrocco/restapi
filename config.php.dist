@@ -22,22 +22,24 @@ return [
             'max_age' => 0
         ],
 
-        'token' => [
-            'secret_key' => 'set-this-to-something-long-and-secret',
-            'issuer' => 'localhost',
-            'algorithms' => ['HS256'],
-        ],
+        'auth' => [
+            'token' => [
+                'secret_key' => 'set-this-to-something-long-and-secret',
+                'issuer' => 'localhost',
+                'algorithms' => ['HS256'],
+            ],
 
-        'cookie' => [
-            'lifetime' => 2592000, // 1 month
-            'path' => '/',
-            'domain' => '',
-            'secure' => true,
-            'httponly' => true,
-        ],
+            'cookie' => [
+                'lifetime' => 2592000, // 1 month
+                'path' => '/',
+                'domain' => '',
+                'secure' => true,
+                'httponly' => true,
+            ],
 
-        'users' => [
-            // Add users here
+            'users' => [
+                // Add users here
+            ],
         ],
     ],
 ];

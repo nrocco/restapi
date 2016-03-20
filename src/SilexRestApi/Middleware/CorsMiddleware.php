@@ -1,36 +1,20 @@
 <?php
 
-namespace SilexRestApi\Listeners;
+namespace SilexRestApi\Middleware;
 
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\EventDispatcher\EventSubscriberInterface;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Event\FilterResponseEvent;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\HttpKernel\KernelEvents;
 
-class CorsListener implements EventSubscriberInterface
+class CorsMiddleware
 {
-    /**
-     * Simple headers as defined in the spec should always be accepted
-     */
     protected static $simpleHeaders = [
         'accept',
         'accept-language',
         'content-language',
         'origin',
     ];
-    protected $dispatcher;
-    protected $defaults;
 
-    public static function getSubscribedEvents()
-    {
-        return [
-            KernelEvents::REQUEST => array('onKernelRequest', 10000),
-            KernelEvents::RESPONSE => array('onKernelResponse'),
-        ];
-    }
+    protected $defaults;
 
     public function __construct(array $defaults = array())
     {
@@ -41,45 +25,23 @@ class CorsListener implements EventSubscriberInterface
         $this->defaults = $defaults;
     }
 
-    public function onKernelRequest(GetResponseEvent $event)
+    public function processRequest(Request $request)
     {
-        if (HttpKernelInterface::MASTER_REQUEST !== $event->getRequestType()) {
-            return;
-        }
-
-        $request = $event->getRequest();
-
-        // skip if not a CORS request
         if (!$request->headers->has('Origin')) {
-            return;
+            return; // skip if not a cors request
         }
 
-        // perform preflight checks
         if ('OPTIONS' === $request->getMethod()) {
-            $event->setResponse($this->getPreflightResponse($request));
-
-            return;
+            return $this->getPreflightResponse($request);
         }
 
         if (!$this->isOriginAllowed($request)) {
-            $response = new Response('', 403, array('Access-Control-Allow-Origin' => 'null'));
-            $event->setResponse($response);
-
-            return;
+            return new Response('', 403, array('Access-Control-Allow-Origin' => 'null'));
         }
-
-        return;
     }
 
-    public function onKernelResponse(FilterResponseEvent $event)
+    public function processResponse(Request $request, Response $response)
     {
-        if (HttpKernelInterface::MASTER_REQUEST !== $event->getRequestType()) {
-            return;
-        }
-
-        $response = $event->getResponse();
-        $request = $event->getRequest();
-
         if ($response->headers->has('Access-Control-Allow-Origin') && $response->headers->get('Access-Control-Allow-Origin') === 'null') {
             return;
         }
@@ -152,7 +114,6 @@ class CorsListener implements EventSubscriberInterface
 
     protected function isOriginAllowed($request)
     {
-        // check origin
         $origin = $request->headers->get('Origin');
 
         if ($this->defaults['allow_origin'] === true || in_array($origin, $this->defaults['allow_origin'])) {

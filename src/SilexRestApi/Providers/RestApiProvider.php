@@ -5,11 +5,11 @@ namespace SilexRestApi\Providers;
 use RestApi\HashedStorage;
 use RestApi\RestApi;
 use SilexRestApi\Controllers\RestApiCrudController;
-use SilexRestApi\Listeners\CorsListener;
+use SilexRestApi\Middleware\CorsMiddleware;
+use SilexRestApi\Services\AuthService;
 use Silex\Application;
 use Silex\ControllerProviderInterface;
 use Silex\ServiceProviderInterface;
-use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -17,7 +17,6 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
 {
     public function register(Application $app)
     {
-        // register services
         $app['restapi.storage'] = $app->share(function () use ($app) {
             return new HashedStorage($app['restapi']['storage_path']);
         });
@@ -30,20 +29,29 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
             return $api;
         });
 
-        if ($app['restapi']['cors'] !== false) {
-            $app['dispatcher']->addSubscriber(new CorsListener($app['restapi']['cors']));
+        if ($app['restapi']['auth']) {
+            $app['restapi.auth'] = $app->share(function () use ($app) {
+                $auth = new AuthService($app['restapi']['auth']['users']);
+                $auth->setTokenOptions($app['restapi']['auth']['token']);
+                $auth->setCookieOptions($app['restapi']['auth']['cookie']);
+
+                return $auth;
+            });
+
+            $app['restapi.listener.auth_checker'] = $app->protect(function () use ($app) {
+                if (!$user = $app['restapi.auth']->getAuthenticatedUserFromRequest($app['request'])) {
+                    return new Response(null, 401, ['Content-Type' => 'application/json']);
+                }
+
+                $app['restapi.service']->setUser($user);
+            });
         }
 
-        $app['restapi.listener.request_json'] = $app->protect(function () use ($app) {
-            if (0 === strpos($app['request']->headers->get('Content-Type'), 'application/json')) {
-                $data = json_decode($app['request']->getContent(), true);
-                $app['request']->request->replace(is_array($data) ? $data : []);
-            }
-        });
-
-        $app['restapi.listener.response_json'] = $app->protect(function (array $response) use ($app) {
-            return $app->json($response['body'], $response['code'], $response['headers']);
-        });
+        if ($app['restapi']['cors']) {
+            $app['restapi.middleware.cors'] = $app->share(function () use ($app) {
+                return new CorsMiddleware($app['restapi']['cors']);
+            });
+        }
     }
 
     public function boot(Application $app)
@@ -52,56 +60,111 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
 
     public function connect(Application $app)
     {
+        $app->view(function (array $result, Request $request) use ($app) {
+            return $app->json($result['body'], $result['code'], $result['headers']);
+        });
+
         $controllers = $app['controllers_factory'];
 
-        // Parse request body if Content-Type: application/json
-        $controllers->before($app['restapi.listener.request_json']);
+        $controllers->before(function (Request $request) {
+            if (0 === strpos($request->headers->get('Content-Type'), 'application/json')) {
+                $data = json_decode($request->getContent(), true);
+                $request->request->replace(is_array($data) ? $data : []);
+            }
+        });
 
-        $app->view($app['restapi.listener.response_json']);
+        if ($app['restapi']['cors']) {
+            $app->before(function (Request $request, Application $app) {
+                return $app['restapi.middleware.cors']->processRequest($request);
+            }, Application::EARLY_EVENT);
 
-        if (!empty($app['restapi.auth_checker'])) {
-            $controllers->before($app['restapi.auth_checker']);
+            $app->after(function (Request $request, Response $response, Application $app) {
+                return $app['restapi.middleware.cors']->processResponse($request, $response);
+            });
         }
 
-        // index
-        $controllers->get('/', function () use ($app) {
+        if ($app['restapi']['auth']) {
+            $controllers->post('/auth/login', function (Request $request) use ($app) {
+                if (!$request->request->has('username') or !$request->request->has('password')) {
+                    return new Response(null, 400, ['Content-Type' => 'application/json']);
+                }
+
+                $username = $request->request->get('username');
+                $password = $request->request->get('password');
+
+                if (true !== $app['restapi.auth']->verifyCredentials($username, $password)) {
+                    return new Response(null, 401, ['Content-Type' => 'application/json']);
+                }
+
+                $response = new Response([
+                    'username' => $username,
+                    'token' => $app['restapi.auth']->createJwtTokenForUser($username),
+                ]);
+
+                $response->headers->setCookie($app['restapi.auth']->createCookieForToken($token));
+
+                if (true === $request->request->has('redirect')) {
+                    $response->headers->set('Location', $request->request->get('redirect'));
+                    $response->setStatusCode(302);
+                }
+
+                $response->headers->set('Content-Type', 'application/json');
+
+                return $response;
+            });
+
+            $controllers->post('/auth/logout', function () use ($app) {
+                $response = new Response(null, 204, ['Content-Type' => 'application/json']);
+                $cookie = $app['restapi.auth']->deleteCookie();
+                $response->headers->setCookie($cookie);
+
+                return $response;
+            });
+        }
+
+        $resources = $app['controllers_factory'];
+
+        if ($app['restapi']['auth']) {
+            $resources->before($app['restapi.listener.auth_checker']);
+        }
+
+        $resources->get('/', function () use ($app) {
             return $app['restapi.service']->listResources();
         });
 
-        $controllers->get('/files/{hash}', function ($hash) use ($app) {
+        $resources->get('/files/{hash}', function ($hash) use ($app) {
             return $app->sendFile($app['restapi.service']->fetchFile($hash));
         });
 
-        $controllers->get('/thumbs/{hash}', function ($hash) use ($app) {
+        $resources->get('/thumbs/{hash}', function ($hash) use ($app) {
             try {
-                return $app->sendFile(
-                    $app['restapi']['thumbs_path'].'/'.$app['restapi.storage']->hashToFilePath($hash).'.png'
-                );
+                return $app->sendFile($app['restapi']['thumbs_path'].'/'.$app['restapi.storage']->hashToFilePath($hash).'.png');
             } catch (\Exception $e) {
                 return new Response(null, 404);
             }
         });
 
-        // collection routes
-        $controllers->get('/{table}', function (Request $request, $table) use ($app) {
+        $resources->get('/{table}', function (Request $request, $table) use ($app) {
             return $app['restapi.service']->readCollection($table, $request->query->all());
         });
-        $controllers->post('/{table}', function (Request $request, $table) use ($app) {
-            $params = array_merge($request->request->all(), $request->files->all());
-            return $app['restapi.service']->createResource($table, $params);
+
+        $resources->post('/{table}', function (Request $request, $table) use ($app) {
+            return $app['restapi.service']->createResource($table, array_merge($request->request->all(), $request->files->all()));
         });
 
-        // resource routes
-        $controllers->get('/{table}/{pk}', function (Request $request, $table, $pk) use ($app) {
+        $resources->get('/{table}/{pk}', function (Request $request, $table, $pk) use ($app) {
             return $app['restapi.service']->readResource($table, $pk, $request->query->all());
         });
-        $controllers->match('/{table}/{pk}', function (Request $request, $table, $pk) use ($app) {
-            $params = array_merge($request->request->all(), $request->files->all());
-            return $app['restapi.service']->updateResource($table, $pk, $params);
+
+        $resources->match('/{table}/{pk}', function (Request $request, $table, $pk) use ($app) {
+            return $app['restapi.service']->updateResource($table, $pk, array_merge($request->request->all(), $request->files->all()));
         })->method('POST|PATCH');
-        $controllers->delete('/{table}/{pk}', function ($table, $pk) use ($app) {
+
+        $resources->delete('/{table}/{pk}', function ($table, $pk) use ($app) {
             return $app['restapi.service']->deleteResource($table, $pk);
         });
+
+        $controllers->mount('/', $resources);
 
         return $controllers;
     }
