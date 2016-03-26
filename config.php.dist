@@ -3,6 +3,9 @@
 return [
     'debug' => false,
 
+    'monolog.logfile' => 'php://stdout',
+    'monolog.name' => 'restapi',
+
     'db.options' => [
         'driver'   => 'pdo_sqlite',
         'path'     => __DIR__.'/app.db',
