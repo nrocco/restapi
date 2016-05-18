@@ -2,44 +2,45 @@
 
 namespace SilexRestApi\Providers;
 
+use Pimple\Container;
+use Pimple\ServiceProviderInterface;
 use RestApi\HashedStorage;
 use RestApi\RestApi;
 use SilexRestApi\Controllers\RestApiCrudController;
 use SilexRestApi\Middleware\CorsMiddleware;
 use SilexRestApi\Services\AuthService;
+use Silex\Api\ControllerProviderInterface;
 use Silex\Application;
-use Silex\ControllerProviderInterface;
-use Silex\ServiceProviderInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 
 class RestApiProvider implements ServiceProviderInterface, ControllerProviderInterface
 {
-    public function register(Application $app)
+    public function register(Container $app)
     {
-        $app['restapi.storage'] = $app->share(function () use ($app) {
+        $app['restapi.storage'] = function () use ($app) {
             return new HashedStorage($app['restapi']['storage_path']);
-        });
+        };
 
-        $app['restapi.service'] = $app->share(function () use ($app) {
+        $app['restapi.service'] = function () use ($app) {
             $api = new RestApi($app['db'], $app['restapi']['schema_cache']);
             $api->setStorage($app['restapi.storage']);
             $api->setDebug($app['debug']);
 
             return $api;
-        });
+        };
 
-        if ($app['restapi']['auth']) {
-            $app['restapi.auth'] = $app->share(function () use ($app) {
+        if (isset($app['restapi']['auth'])) {
+            $app['restapi.auth'] = function () use ($app) {
                 $auth = new AuthService($app['restapi']['auth']['users']);
                 $auth->setTokenOptions($app['restapi']['auth']['token']);
                 $auth->setCookieOptions($app['restapi']['auth']['cookie']);
 
                 return $auth;
-            });
+            };
 
-            $app['restapi.listener.auth_checker'] = $app->protect(function () use ($app) {
-                if (!$user = $app['restapi.auth']->getAuthenticatedUserFromRequest($app['request'])) {
+            $app['restapi.listener.auth_checker'] = $app->protect(function (Request $request) use ($app) {
+                if (!$user = $app['restapi.auth']->getAuthenticatedUserFromRequest($request)) {
                     return new Response(null, 401, ['Content-Type' => 'application/json']);
                 }
 
@@ -47,15 +48,11 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
             });
         }
 
-        if ($app['restapi']['cors']) {
-            $app['restapi.middleware.cors'] = $app->share(function () use ($app) {
+        if (isset($app['restapi']['cors'])) {
+            $app['restapi.middleware.cors'] = function () use ($app) {
                 return new CorsMiddleware($app['restapi']['cors']);
-            });
+            };
         }
-    }
-
-    public function boot(Application $app)
-    {
     }
 
     public function connect(Application $app)
@@ -71,7 +68,7 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
             }
         });
 
-        if ($app['restapi']['cors']) {
+        if (isset($app['restapi']['cors'])) {
             $app->before(function (Request $request, Application $app) {
                 return $app['restapi.middleware.cors']->processRequest($request);
             }, Application::EARLY_EVENT);
@@ -83,7 +80,7 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
 
         $controllers = $app['controllers_factory'];
 
-        if ($app['restapi']['auth']) {
+        if (isset($app['restapi']['auth'])) {
             $controllers->post('/auth/login', function (Request $request) use ($app) {
                 if (!$request->request->has('username') or !$request->request->has('password')) {
                     return new Response(null, 400, ['Content-Type' => 'application/json']);
@@ -124,7 +121,7 @@ class RestApiProvider implements ServiceProviderInterface, ControllerProviderInt
 
         $resources = $app['controllers_factory'];
 
-        if ($app['restapi']['auth']) {
+        if (isset($app['restapi']['auth'])) {
             $resources->before($app['restapi.listener.auth_checker']);
         }
 

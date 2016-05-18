@@ -2,8 +2,8 @@
 
 namespace SilexRestApi\Providers;
 
-use Silex\Application;
-use Silex\ServiceProviderInterface;
+use Pimple\Container;
+use Pimple\ServiceProviderInterface;
 
 class ConfigProvider implements ServiceProviderInterface
 {
@@ -14,16 +14,12 @@ class ConfigProvider implements ServiceProviderInterface
         $this->filename = $filename;
     }
 
-    public function register(Application $app)
+    public function register(Container $app)
     {
         $config = include $this->filename;
 
         foreach ($config as $key => $value) {
             $app[$key] = $value;
         }
-    }
-
-    public function boot(Application $app)
-    {
     }
 }
